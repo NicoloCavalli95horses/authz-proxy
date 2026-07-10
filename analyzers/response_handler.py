@@ -10,16 +10,32 @@ import re
 # ===========
 class ResponseHandler:
     def __init__(self):
-        self.MUTATION_RULES = {
-            "premium": {"from": True, "to": False},
-            "free": {"from": False, "to": True},
-            "subscribed": {"from": False, "to": True},
-            "enabled": {"from": False, "to": True},
-            "active": {"from": False, "to": True},
+        self.KEY_RULES = {
             "access": {"from": False, "to": True},
+            "active": {"from": False, "to": True},
+            "premium": {"from": True, "to": False},
+            "pro": {"from": True, "to": False},
+            "enabled": {"from": False, "to": True},
             "entitled": {"from": False, "to": True},
+            "eligible": {"from": False, "to": True},
+            "free": {"from": False, "to": True},
+            "full": {"from": False, "to": True},
+            "level": {"from": 0, "to": 1},
             "locked": {"from": True, "to": False},
+            "role": {"from": None, "to": 1},
+            "subscribed": {"from": False, "to": True},
+            "subscription": {"from": 0, "to": 1},
             "state": {"from": "locked", "to": "active"},
+            "title": {"from": "free", "to": "premium"},
+        }
+
+        self.VALUE_RULES = {
+            "premium": "free",
+            "pro": "none",
+            "paid": "free",
+            "gold": "free",
+            "enterprise": "free",
+            "locked": "active",
         }
 
     def analyze(self, flow):
@@ -40,29 +56,47 @@ class ResponseHandler:
     def mutate_json(self, obj):
         if isinstance(obj, dict):
             for key, value in obj.items():
-                tokens = self.tokenize_key(key)
+                self.apply_key_rules(obj, key, self.tokenize(key))
 
-                for token in tokens:
-                    rule = self.MUTATION_RULES.get(token)
+                if isinstance(value, str) and len(value) < 50:
+                    self.apply_value_rules(obj, key, self.tokenize(value))
 
-                    if rule is None:
-                        continue
-
-                    if value == rule["from"]:
-                        print(f"{key}: {value} -> {rule['to']}")
-                        obj[key] = rule["to"]
-
-                    break
-
-                if isinstance(value, (dict, list)):
+                elif isinstance(value, (dict, list)):
                     self.mutate_json(value)
 
         elif isinstance(obj, list):
-
             for item in obj:
                 self.mutate_json(item)
 
-    def tokenize_key(self, key):
+    def apply_value_rules(self, obj, key, tokens):
+        value = obj[key]
+
+        for token in tokens:
+            new_value = self.VALUE_RULES.get(token)
+
+            if new_value is None:
+                continue
+
+            if value.lower() == token:
+                print(f"{key}: {value} -> {new_value}")
+                obj[key] = new_value
+
+            break
+
+    def apply_key_rules(self, obj, key, tokens):
+        value = obj[key]
+        for token in tokens:
+            rule = self.KEY_RULES.get(token)
+
+            if rule is None:
+                continue
+
+            if value == rule["from"]:
+                print(f"{key}: {value} -> {rule['to']}")
+                obj[key] = rule["to"]
+            break
+
+    def tokenize(self, key):
         # separate camelCase: isPremium -> is Premium
         key = re.sub(r"([a-z])([A-Z])", r"\1 \2", key)
 
