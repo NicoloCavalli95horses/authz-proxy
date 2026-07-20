@@ -11,17 +11,16 @@ from analyzers.response_handler import ResponseHandler
 # ===========
 class AuthorizationAnalyzer:
 
-    def __init__(self):
-        self.request_handler = RequestHandler()
-        self.response_handler = ResponseHandler()
+  def __init__(self):
+    self.request_handler = RequestHandler()
+    self.response_handler = ResponseHandler()
 
-    def request(self, flow: http.HTTPFlow):
-        self.request_handler.analyze(flow)
+  def request(self, flow: http.HTTPFlow):
+    self.request_handler.analyze(flow)
 
-    def response(self, flow: http.HTTPFlow):
-        self.response_handler.analyze(flow)
-        
-
+  def response(self, flow: http.HTTPFlow):
+    self.response_handler.analyze(flow)
+      
 addons = [
-    AuthorizationAnalyzer()
+  AuthorizationAnalyzer()
 ]

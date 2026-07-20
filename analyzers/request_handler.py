@@ -1,5 +1,11 @@
-class RequestHandler:
+# ===========
+# Import
+# ===========
 
-    def analyze(self, flow):
-        return
+# ===========
+# Class
+# ===========
+class RequestHandler:
+  def analyze(self, flow):
+    return
         

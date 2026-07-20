@@ -1,20 +1,29 @@
 #!/bin/bash
-export PATH="$HOME/.local/bin:$PATH"
+set -e
 
-# current dir
 DIR="$(cd "$(dirname "$0")" && pwd)"
+mkdir -p "$DIR/logs"
 
-# load env
 if [ -f "$DIR/.env" ]; then
   export $(grep -v '^#' "$DIR/.env" | xargs)
 fi
 
 echo "Using mitmproxy port: $MITM_PORT"
+echo "Using Chrome debug port: $CHROME_DEBUG_PORT"
 
-# logs dir
-mkdir -p "$DIR/logs"
+cleanup() {
+    echo "Cleaning up..."
 
-# start mitmproxy
+    [[ -n "$CHROME_PID" ]] && kill "$CHROME_PID" 2>/dev/null || true
+    [[ -n "$MITM_PID" ]] && kill "$MITM_PID" 2>/dev/null || true
+    pkill -f "mitmdump.*$MITM_PORT" 2>/dev/null || true
+
+    exit 0
+}
+
+trap cleanup SIGINT SIGTERM EXIT
+
+
 $HOME/.local/bin/mitmdump \
     --listen-port "$MITM_PORT" \
     -s "$DIR/main.py" \
@@ -22,26 +31,20 @@ $HOME/.local/bin/mitmdump \
 
 MITM_PID=$!
 
-# wait for the proxy to start
 sleep 2
 
-# start Chrome
+
 google-chrome \
-  --remote-debugging-port="$CHROME_DEBUG_PORT" \
-  --proxy-server="http://127.0.0.1:$MITM_PORT" \
-  --user-data-dir="$HOME/chrome-mitm-profile" \
-  > logs/chrome.log 2>&1 &
+    --remote-debugging-port="$CHROME_DEBUG_PORT" \
+    --proxy-server="http://127.0.0.1:$MITM_PORT" \
+    --user-data-dir="$HOME/chrome-mitm-profile" \
+    > "$DIR/logs/chrome.log" 2>&1 &
 
 CHROME_PID=$!
 
 sleep 3
 
-# start playwright
 (
   cd "$DIR/playwright"
   node index.js > "$DIR/logs/playwright.log" 2>&1
 )
-
-# End session
-wait $CHROME_PID
-kill $MITM_PID
