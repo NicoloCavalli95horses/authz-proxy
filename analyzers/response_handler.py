@@ -22,7 +22,7 @@ class ResponseHandler:
   def analyze(self, flow):
     content_type = flow.response.headers.get("content-type", "")
     
-    if "application/json" in content_type:
+    if "json" in content_type:
       try:
         data = flow.response.json()
 
