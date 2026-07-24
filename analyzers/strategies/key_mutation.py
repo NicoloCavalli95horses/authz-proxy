@@ -26,6 +26,7 @@ class KeyMutationStrategy(BaseMutationStrategy):
     "free": (False, True),
     "full": (False, True),
     "has": (False, True),
+    "is_subscriber": (False, True),
     "level": (0, 1),
     "locked": (True, False),
     "otp": (True, False),
@@ -43,6 +44,8 @@ class KeyMutationStrategy(BaseMutationStrategy):
     "subscription": (0, 1),
     "state": ("locked","active"),
     "title": ("free", "premium"),
+    "unlock": (False, True),
+    "unlocked": (False, True),
     "vip": (True, False)
   }
 

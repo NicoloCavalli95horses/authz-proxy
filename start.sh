@@ -25,7 +25,7 @@ cleanup() {
 trap cleanup SIGINT SIGTERM EXIT
 
 # Start mitmdump
-$HOME/.local/bin/mitmdump \
+$DIR/.venv/bin/mitmdump \
     --listen-port "$MITM_PORT" \
     -s "$DIR/main.py" \
     > "$DIR/logs/mitm.log" 2>&1 &

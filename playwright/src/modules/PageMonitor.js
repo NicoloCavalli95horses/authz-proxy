@@ -1,26 +1,36 @@
+// ===========
+// Import
+// ===========
+import { log } from "../utils/utils.js";
+
+
+// ===========
+// Class
+// ===========
 export class PageMonitor {
   constructor() {
     this.counter = 0;
     this.pages = new WeakSet();
+    this.enabled = false;
   }
 
 
 
   async attach(page) {
     if (page.isClosed()) {
-      console.warn("Cannot attach: page already closed");
+      log("Cannot attach: page already closed");
       return;
     }
     this.pages.add(page);
-    console.log("Attaching monitor to:", page.url());
+    log("Attaching monitor to:", page.url());
 
     page.on("close", () => {
-      console.log("Page closed");
+      log("Page closed");
       this.pages.delete(page);
     });
 
     page.on("crash", () => {
-      console.log("Page crashed");
+      log("Page crashed");
       this.pages.delete(page);
     });
 
@@ -30,23 +40,20 @@ export class PageMonitor {
       page.__monitorAttached = true;
 
       await page.exposeFunction("_emitEvent", async (e) => {
-        console.log("Click event:", e);
+        log("Click event:", e);
         this.counter++;
         // await page.screenshot({ path: `./screenshots/screenshot${this.counter}.png` });
         // this can be used to reconstruct the user flow and create a AuthZ test
       });
 
       await page.exposeFunction("_emitReplay", async (e) => {
-        console.log("Replaying actions...");
-
-        // lets just check that the automatic click is not blocked first
-        await page.mouse.click(150,336); // fucking works!!
-        console.log("Clicked at 150,336");
+        log("Replaying actions...");
+        // await page.mouse.click(x,y);
       });
 
 
     } catch (err) {
-      console.warn("Expose failed:", err.message);
+      log("Expose failed:", err.message);
       return;
     }
 
@@ -63,12 +70,12 @@ export class PageMonitor {
 
       try {
         if (frame === page.mainFrame()) {
-          console.log("Navigation:", frame.url());
+          log("Navigation:", frame.url());
           await this.safeEvaluate(page, PageMonitor.injectHook);
         }
 
       } catch (err) {
-        console.warn("Navigation handler failed:", err.message);
+        log("Navigation handler failed:", err.message);
       }
     });
   }
@@ -84,7 +91,7 @@ export class PageMonitor {
       await page.evaluate(fn);
       return true;
     } catch (err) {
-      console.warn("Page unavailable:", err.message);
+      log("Page unavailable:", err.message);
       return false;
     }
 
@@ -125,13 +132,14 @@ export class PageMonitor {
         border-radius:4px;
         cursor:pointer;
     `;
-      btn.innerText = "Replay";
+      btn.innerText = "record";
 
       btn.onclick = () => {
         if (typeof window._emitReplay !== "function") {
           return;
         }
-        window._emitReplay({ type: "replay", data:{} });
+        window._emitReplay({ type: "replay", data:{}});
+        btn.innerText = btn.innerText == "record" ? "replay" : "record";
       };
 
       document.body.appendChild(btn);

@@ -2,21 +2,21 @@
 // Import
 // ===========
 import { chromium } from "playwright";
-import { PageMonitor } from "./PageMonitor.js";
-
+import { PageMonitor } from "./src/modules/PageMonitor.js";
+import { log } from "./src/utils/utils.js";
 
 
 // ===========
 // Main
 // ===========
 async function connect() {
-  console.log("Try connecting to Chrome...");
+  log("Try connecting to Chrome...");
   try {
     const browser = await chromium.connectOverCDP("http://127.0.0.1:9222");
-    console.log("Connected!");
+    log("Connected!");
     return browser;
   } catch (error) {
-    console.error("Connection error: ", error);
+    log("Connection error: ", error);
   }
 }
 
@@ -31,7 +31,7 @@ async function main() {
 
   // New tab/popup
   context.on("page", async (page) => {
-    console.log("Current page:", page.url());
+    log("Current page:", page.url());
     await monitor.attach(page);
   });
 

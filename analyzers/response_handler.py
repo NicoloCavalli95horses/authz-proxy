@@ -11,7 +11,8 @@ from analyzers.strategies.value_mutation import ValueMutationStrategy
 # Class
 # ===========
 class ResponseHandler:
-  def __init__(self):
+  def __init__(self, state):
+    self.state = state
     self.walker = JsonWalker()
     self.strategies = [
       KeyMutationStrategy(),
@@ -20,6 +21,9 @@ class ResponseHandler:
     
 
   def analyze(self, flow):
+    if not self.state.enabled:
+      return
+
     content_type = flow.response.headers.get("content-type", "")
     
     if "json" in content_type:
@@ -31,7 +35,7 @@ class ResponseHandler:
         return
 
       self.walker.walk(data, self.apply_strategies)
-      flow.response.text = json.dumps(data)
+      flow.response.text = json.dumps(data, ensure_ascii=False) # dumps uses escape by default, this prevents char trasformation
       
     elif "text/html" in content_type:
       print("text/html response")
@@ -40,4 +44,4 @@ class ResponseHandler:
 
   def apply_strategies(self, obj, key, context):
     for strategy in self.strategies:
-        strategy.apply(obj, key, context)
+      strategy.apply(obj, key, context)
