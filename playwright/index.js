@@ -4,6 +4,7 @@
 import { chromium } from "playwright";
 import { PageMonitor } from "./src/modules/PageMonitor.js";
 import { log } from "./src/utils/utils.js";
+import { injectHook } from "./src/modules/injectHook.js";
 
 
 // ===========
@@ -21,13 +22,13 @@ async function connect() {
 }
 
 
-async function main() {
+async function bootstrap() {
   const browser = await connect();
   const context = browser.contexts()[0];
   const monitor = new PageMonitor();
 
   // Hook for all documents
-  await context.addInitScript(PageMonitor.injectHook);
+  await context.addInitScript(injectHook);
 
   // New tab/popup
   context.on("page", async (page) => {
@@ -43,5 +44,5 @@ async function main() {
 
 
 
-await main();
+await bootstrap();
 

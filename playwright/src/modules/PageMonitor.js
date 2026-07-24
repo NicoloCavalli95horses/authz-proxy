@@ -1,8 +1,8 @@
 // ===========
 // Import
 // ===========
-import { log } from "../utils/utils.js";
-
+import { cleanScreenshots, log } from "../utils/utils.js";
+import { injectHook } from "./injectHook.js";
 
 // ===========
 // Class
@@ -11,10 +11,13 @@ export class PageMonitor {
   constructor() {
     this.counter = 0;
     this.pages = new WeakSet();
-    this.enabled = false;
+    this.state = "idle";
+
+    this.storage = {
+      initialURL: "",
+      coordinates: [],
+    };
   }
-
-
 
   async attach(page) {
     if (page.isClosed()) {
@@ -34,35 +37,24 @@ export class PageMonitor {
       this.pages.delete(page);
     });
 
-
     try {
       if (page.__monitorAttached) { return; }
       page.__monitorAttached = true;
 
-      await page.exposeFunction("_emitEvent", async (e) => {
-        log("Click event:", e);
-        this.counter++;
-        // await page.screenshot({ path: `./screenshots/screenshot${this.counter}.png` });
-        // this can be used to reconstruct the user flow and create a AuthZ test
-      });
+      await page.exposeFunction("_emitClickEvent", (e) => this.onClick(page, e));
 
-      await page.exposeFunction("_emitReplay", async (e) => {
-        log("Replaying actions...");
-        // await page.mouse.click(x,y);
-      });
-
+      // used by injectHook to sync the state of the button on new pages
+      await page.exposeFunction("_toggleState", () => this.onToggleState(page));
+      await page.exposeFunction("_getState", () => this.state);
 
     } catch (err) {
       log("Expose failed:", err.message);
       return;
     }
 
-
-    await this.attachOnFrameNavigated(page);
-    await this.safeEvaluate(page, PageMonitor.injectHook);
+    this.attachOnFrameNavigated(page);
+    await this.safeEvaluate(page, injectHook);
   }
-
-
 
   attachOnFrameNavigated(page) {
     page.on("framenavigated", async (frame) => {
@@ -71,7 +63,7 @@ export class PageMonitor {
       try {
         if (frame === page.mainFrame()) {
           log("Navigation:", frame.url());
-          await this.safeEvaluate(page, PageMonitor.injectHook);
+          await this.safeEvaluate(page, injectHook);
         }
 
       } catch (err) {
@@ -79,8 +71,6 @@ export class PageMonitor {
       }
     });
   }
-
-
 
   async safeEvaluate(page, fn) {
     if (!page || page.isClosed()) {
@@ -98,69 +88,91 @@ export class PageMonitor {
     throw err;
   }
 
+  async onToggleState(page) {
+    log("state change request. Current state is", this.state);
 
+    switch (this.state) {
+      case "idle":
+        this.state = "record";
+        await this.startRecording(page);
+        break;
 
-  static injectHook() {
-    function getTargetInfo(e) {
-      const target = e.target;
-      const tag = target.tagName;
-      const id = target.id;
-      const classes = [...target.classList];
-      const attributes = Object.fromEntries([...target.attributes].map(attr => [attr.name, attr.value]));
-      const text = target.innerText?.slice(0, 200);
-      const position = { x: e.clientX, y: e.clientY };
-      const r = target.getBoundingClientRect();
-      const rect = { x: r.x, y: r.y, width: r.width, height: r.height };
+      case "record":
+        this.state = "replay";
+        await this.startReplay(page);
+        break;
 
-      return { tag, id, classes, attributes, text, position, rect };
+      case "replay":
+        this.state = "done";
+        this.closeSession();
+        break;
     }
 
-    function addDebugButton() {
-      if (document.getElementById("__playwright_debug")) { return; }
+    log("State update", this.state);
+    return this.state;
+  }
 
-      const btn = document.createElement("button");
-      btn.id = "__playwright_debug";
-      btn.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        left: 20px;
-        width: 60px;
-        height: 40px;
-        z-index: 9999;
-        background: #111;
-        color: white;
-        border-radius:4px;
-        cursor:pointer;
-    `;
-      btn.innerText = "record";
+  async onClick(page, event) {
+    if (event.data.id === "__playwright_debug") { return; } // exclude our button
+    log("Click event:", event);
 
-      btn.onclick = () => {
-        if (typeof window._emitReplay !== "function") {
-          return;
-        }
-        window._emitReplay({ type: "replay", data:{}});
-        btn.innerText = btn.innerText == "record" ? "replay" : "record";
-      };
 
-      document.body.appendChild(btn);
+    if (this.state == "record") {
+      this.counter++;
+      const path = `./screenshots/reference/screenshot_${this.counter}.png`;
+      await page.screenshot({ path });
+      log('New screenshot at', path);
+
+      this.storage.coordinates.push(event.data.position);
+      log("Updated coordinates:", this.storage.coordinates);
     }
+  }
 
-    // Do not inject two times
-    if (window.__pageMonitorInstalled) {
-      return;
-    }
-    window.__pageMonitorInstalled = true;
+  async startRecording(page) {
+    await cleanScreenshots();
 
-    document.addEventListener("click", e => {
-      if (typeof window._emitEvent !== "function") {
-        return;
-      }
+    this.storage.initialURL = page.url();
+    this.storage.coordinates = [];
 
-      const data = getTargetInfo(e); // this cannot be a method of PageMonitor, which does not exist in this context
-      window._emitEvent({ type: "click", data });
-    }, true);
+    log("Recording started");
+    log("Saved initial URL:", this.storage.initialURL);
 
-    // Debug button
-    window.addEventListener("load", addDebugButton);
+    // do an initial screenshot
+    // [TODO] extract screenshots fn 
+  }
+
+  async startReplay(page) {
+    this.counter = 0;
+    log("Replay started");
+
+    // Go to starting page
+    await page.goto(this.storage.initialURL, { waitUntil: "networkidle" });
+
+    if (!this.storage.coordinates.length) { return; }
+
+    for (const pos of this.storage.coordinates) {
+      this.counter++;
+      const path = `./screenshots/target/screenshot_${this.counter}.png`;
+      await page.screenshot({ path });
+      log('New screenshot at', path);
+
+      await page.mouse.click(pos.x, pos.y);
+      log('Clicked at', pos);
+
+      await waitAfterClick(page);
+    };
+  }
+
+  async waitAfterClick(page) {
+    try {
+      await page.waitForLoadState("networkidle", { timeout: 3000 });
+    } catch { }
+
+    // Wait for two frame updates
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  }
+
+  closeSession() {
+    log("Done")
   }
 }
