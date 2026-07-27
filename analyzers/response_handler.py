@@ -2,10 +2,14 @@
 # Import
 # ===========
 import json
-
+import os
 from analyzers.utils.json_walker import JsonWalker 
 from analyzers.strategies.key_mutation import KeyMutationStrategy
 from analyzers.strategies.value_mutation import ValueMutationStrategy
+from dotenv import load_dotenv
+
+load_dotenv()
+IS_PROXY_ACTIVE = os.getenv("IS_PROXY_ACTIVE", "false").lower() == "true"
 
 # ===========
 # Class
@@ -21,7 +25,7 @@ class ResponseHandler:
     
 
   def analyze(self, flow):
-    if not self.state.enabled:
+    if not self.state.enabled and not IS_PROXY_ACTIVE:
       return
 
     content_type = flow.response.headers.get("content-type", "")

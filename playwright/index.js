@@ -5,6 +5,7 @@ import { chromium } from "playwright";
 import { PageMonitor } from "./src/modules/PageMonitor.js";
 import { log } from "./src/utils/utils.js";
 import { injectHook } from "./src/modules/injectHook.js";
+import 'dotenv/config';
 
 
 // ===========

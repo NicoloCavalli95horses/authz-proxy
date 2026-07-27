@@ -13,11 +13,10 @@ class BaseMutationStrategy:
     raise NotImplementedError
 
   def tokenize(self, key):
-    # separate camelCase: isPremium -> is Premium
-    key = re.sub(r"([a-z])([A-Z])", r"\1 \2", key)
+    key = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1 \2", key)
+    key = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", key)
 
-    # replace separators
     key = key.replace("_", " ")
     key = key.replace("-", " ")
-    tokens = key.lower().split()
-    return tokens
+
+    return key.lower().split()

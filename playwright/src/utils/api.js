@@ -7,7 +7,7 @@ import { log } from '../utils/utils.js';
 //==============================
 // Consts
 //==============================
-const BASE_URL = "http://127.0.0.1:8000/api";
+const BASE_URL = `http://${process.env.API_HOST}:${process.env.API_PORT}/api`;
 
 
 //==============================
@@ -33,44 +33,31 @@ async function _executeApi({ url, options }) {
       return data;
     } else {
       const msg = data?.message || 'Unknown error';
-      addToastMsg({ msg, time: 3000 });
+      log({ msg, time: 3000 });
       return null;
     }
 
   } catch (err) {
     console.error('Request error:', err);
-    addToastMsg({ msg: 'Request error' });
+    log({ msg: 'Request error' });
     return null;
   }
 }
 
 
 function _getApiOptions({
-  method,
-  mode,
-  cache,
-  credentials,
-  headers,
-  redirect,
-  referrerPolicy,
+  method = "GET",
+  headers = {},
   body,
-  accept,
   token,
 } = {}) {
-
   return {
-    method: method || "GET",
-    mode: mode || "cors",
-    cache: cache || "no-cache",
-    credentials: credentials || "same-origin",
-    body: body || undefined,
-    accept: accept,
+    method,
+    body,
     headers: {
       ...headers,
-      "Authorization": `Bearer ${token}`,
+      ...(token && { Authorization: `Bearer ${token}` }),
       "Content-Type": "application/json",
     },
-    redirect: redirect || "follow",
-    referrerPolicy: referrerPolicy || "origin",
   };
 }

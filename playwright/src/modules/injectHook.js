@@ -6,14 +6,24 @@ export async function injectHook() {
     // Do not inject two times
     if (window.__pageMonitorInstalled) { return; }
     window.__pageMonitorInstalled = true;
-
-    installClickListener();
+    window.__normalizeGUI = installGUINormalizer;
 
     if (document.readyState === "loading") {
-      window.addEventListener("load", installButton);
+      window.addEventListener("load", installAll);
     } else {
-      await installButton();
+      await installAll();
     }
+  }
+
+  async function installAll() {
+    await installButton();
+    installClickListener();
+    installGUINormalizer();
+  }
+
+  function installGUINormalizer() {
+    // disableAnimations();
+    // hideIframes();
   }
 
   function getTargetInfo(e) {
@@ -28,6 +38,34 @@ export async function injectHook() {
     const rect = { x: r.x, y: r.y, width: r.width, height: r.height };
 
     return { tag, id, classes, attributes, text, position, rect };
+  }
+
+  function hideIframes() {
+    document.querySelectorAll("iframe").forEach(iframe => {
+      iframe.style.background = "white";
+      iframe.style.visibility = "hidden";
+    });
+  }
+
+  function disableAnimations() {
+    if (document.getElementById("__screenshot_normalizer")) { return; }
+
+    const style = document.createElement("style");
+
+    style.id = "__screenshot_normalizer";
+
+    style.textContent = `
+        *,
+        *::before,
+        *::after {
+            animation: none !important;
+            transition: none !important;
+            caret-color: transparent !important;
+            scroll-behavior: auto !important;
+        }
+    `;
+
+    document.head.appendChild(style);
   }
 
   function updateBtnLabel(state) {
@@ -50,10 +88,6 @@ export async function injectHook() {
     return !e.target.closest("#__playwright_debug") && typeof window._emitClickEvent === "function";
   }
 
-  function canToggleState() {
-    return typeof window._toggleState === "function";
-  }
-
   async function installButton() {
     if (document.getElementById("__playwright_debug")) { return; }
 
@@ -71,19 +105,17 @@ export async function injectHook() {
 
     btn.style.cssText = `
         position: fixed;
-        bottom: 20px;
-        left: 20px;
-        width: 60px;
-        height: 40px;
-        z-index: 9999;
-        background: #111;
+        bottom: 0px;
+        right: 0px;
+        width: auto;
+        z-index: 99999;
+        background: #000;
         color: white;
-        border-radius:4px;
         cursor:pointer;
     `;
 
     btn.onclick = async () => {
-      if (canToggleState()) {
+      if (typeof window._toggleState === "function") {
         const state = await window._toggleState();
         btn.dataset.state = state;
         btn.innerText = updateBtnLabel(btn.dataset.state);

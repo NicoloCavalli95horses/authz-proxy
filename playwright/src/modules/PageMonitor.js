@@ -1,6 +1,7 @@
 // ===========
 // Import
 // ===========
+import { apiToggleProxyState } from "../utils/api.js";
 import { cleanScreenshots, log } from "../utils/utils.js";
 import { injectHook } from "./injectHook.js";
 
@@ -90,7 +91,7 @@ export class PageMonitor {
   }
 
   async onToggleState(page) {
-    if (this.busy) { return; }
+    if (this.busy) { return this.state; }
     log("State change request. Current state is", this.state);
     this.busy = true;
 
@@ -106,8 +107,8 @@ export class PageMonitor {
         break;
 
       case "replay":
-        this.state = "done";
-        this.closeSession();
+        await this.closeSession();
+        this.state = "idle";
         break;
     }
 
@@ -143,6 +144,8 @@ export class PageMonitor {
     this.counter = 0;
     log("Replay started");
 
+    await apiToggleProxyState(true);
+
     // Go to starting page
     await page.goto(this.storage.initialURL, { waitUntil: "networkidle" });
 
@@ -155,15 +158,14 @@ export class PageMonitor {
       await this.saveScreenshot("target", page);
     }
 
-    this.state = "done";
-    this.closeSession();
+    await this.closeSession();
   }
 
   async saveScreenshot(type, page) {
     this.counter++;
     const path = `./screenshots/${type}/screenshot_${this.counter}.png`;
     await page.screenshot({ path });
-    log('New screenshot at', path);
+    log("New screenshot at", path);
   }
 
   async clickAndWait(pos, page) {
@@ -178,6 +180,7 @@ export class PageMonitor {
     await this.waitForStableDOM(page);
   }
 
+  // Observe DOM mutation, wait till no mutations are observed or MAX_WAIT
   async waitForStableDOM(page) {
     await page.evaluate(() => {
       return new Promise(resolve => {
@@ -209,7 +212,8 @@ export class PageMonitor {
     });
   }
 
-  closeSession() {
-    log("Done")
+  async closeSession() {
+    await apiToggleProxyState(false);
+    log("Replay done");
   }
 }

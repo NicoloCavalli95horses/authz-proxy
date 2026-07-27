@@ -30,6 +30,8 @@ class Server:
       self.state.enabled = False
       print(f"Proxy state update: {self.state.enabled}")
       return {"status": "disabled"}
+  
+    self.app.include_router(router)
 
   def run(self):
     port = os.getenv("API_PORT")
