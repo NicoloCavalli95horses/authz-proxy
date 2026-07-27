@@ -46,8 +46,8 @@ export async function injectHook() {
     }
   }
 
-  function canEmitClick() {
-    return typeof window._emitClickEvent === "function";
+  function canEmitClick(e) {
+    return !e.target.closest("#__playwright_debug") && typeof window._emitClickEvent === "function";
   }
 
   function canToggleState() {
@@ -95,7 +95,7 @@ export async function injectHook() {
 
   function installClickListener() {
     document.addEventListener("click", e => {
-      if (canEmitClick()) {
+      if (canEmitClick(e)) {
         window._emitClickEvent({ data: getTargetInfo(e) });
       }
     }, true);

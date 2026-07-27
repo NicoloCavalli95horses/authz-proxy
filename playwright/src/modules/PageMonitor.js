@@ -12,6 +12,7 @@ export class PageMonitor {
     this.counter = 0;
     this.pages = new WeakSet();
     this.state = "idle";
+    this.busy = false;
 
     this.storage = {
       initialURL: "",
@@ -89,7 +90,9 @@ export class PageMonitor {
   }
 
   async onToggleState(page) {
-    log("state change request. Current state is", this.state);
+    if (this.busy) { return; }
+    log("State change request. Current state is", this.state);
+    this.busy = true;
 
     switch (this.state) {
       case "idle":
@@ -108,24 +111,20 @@ export class PageMonitor {
         break;
     }
 
+    this.busy = false;
     log("State update", this.state);
     return this.state;
   }
 
   async onClick(page, event) {
-    if (event.data.id === "__playwright_debug") { return; } // exclude our button
+    if (this.busy) { return; }
+    if (this.state !== "record") { return; }
+
+    await this.saveScreenshot("reference", page);
+
     log("Click event:", event);
-
-
-    if (this.state == "record") {
-      this.counter++;
-      const path = `./screenshots/reference/screenshot_${this.counter}.png`;
-      await page.screenshot({ path });
-      log('New screenshot at', path);
-
-      this.storage.coordinates.push(event.data.position);
-      log("Updated coordinates:", this.storage.coordinates);
-    }
+    this.storage.coordinates.push(event.data.position);
+    log("Updated coordinates:", this.storage.coordinates);
   }
 
   async startRecording(page) {
@@ -137,8 +136,7 @@ export class PageMonitor {
     log("Recording started");
     log("Saved initial URL:", this.storage.initialURL);
 
-    // do an initial screenshot
-    // [TODO] extract screenshots fn 
+    await this.saveScreenshot("reference", page);
   }
 
   async startReplay(page) {
@@ -150,26 +148,65 @@ export class PageMonitor {
 
     if (!this.storage.coordinates.length) { return; }
 
+    await this.saveScreenshot("target", page);
+
     for (const pos of this.storage.coordinates) {
-      this.counter++;
-      const path = `./screenshots/target/screenshot_${this.counter}.png`;
-      await page.screenshot({ path });
-      log('New screenshot at', path);
+      await this.clickAndWait(pos, page);
+      await this.saveScreenshot("target", page);
+    }
 
-      await page.mouse.click(pos.x, pos.y);
-      log('Clicked at', pos);
-
-      await waitAfterClick(page);
-    };
+    this.state = "done";
+    this.closeSession();
   }
 
-  async waitAfterClick(page) {
-    try {
-      await page.waitForLoadState("networkidle", { timeout: 3000 });
-    } catch { }
+  async saveScreenshot(type, page) {
+    this.counter++;
+    const path = `./screenshots/${type}/screenshot_${this.counter}.png`;
+    await page.screenshot({ path });
+    log('New screenshot at', path);
+  }
 
-    // Wait for two frame updates
-    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  async clickAndWait(pos, page) {
+    const navigation = page.waitForNavigation({
+      waitUntil: "domcontentloaded",
+      timeout: 2000
+    }).catch(() => null);
+
+    await page.mouse.click(pos.x, pos.y);
+    await navigation;
+
+    await this.waitForStableDOM(page);
+  }
+
+  async waitForStableDOM(page) {
+    await page.evaluate(() => {
+      return new Promise(resolve => {
+        let timer;
+        const MAX_WAIT = 5000;
+
+        const timeout = setTimeout(done, MAX_WAIT);
+
+        function done() {
+          clearTimeout(timer);
+          observer.disconnect();
+          resolve();
+        }
+
+        const observer = new MutationObserver(() => {
+          clearTimeout(timer);
+          timer = setTimeout(done, 500);
+        });
+
+        observer.observe(document, {
+          subtree: true,
+          childList: true,
+          attributes: true,
+          characterData: true,
+        });
+
+        timer = setTimeout(done, 500);
+      });
+    });
   }
 
   closeSession() {
