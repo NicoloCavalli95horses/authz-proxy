@@ -1,11 +1,12 @@
 # ===========
 # Import
 # ===========
-from fastapi import FastAPI, APIRouter
-import uvicorn
 import os
+import json
+import uvicorn
+from pathlib import Path
+from fastapi import FastAPI, APIRouter
 from src.image_analysis.image_compare import ImageCompare
-
 
 # ===========
 # Class
@@ -37,8 +38,14 @@ class Server:
       print("Image analysis launched")
       comparer = ImageCompare()
       results = comparer.compare()
-      print(f"Results: {results}")
-      return {"status": "ok", "data": results}
+      
+      output_dir = Path("output") 
+      output_dir.mkdir(exist_ok=True)
+      output_path = output_dir / "results.json"
+      
+      if results:
+        with output_path.open("w", encoding="utf-8") as f:
+          json.dump(results, f, indent=2, ensure_ascii=False)
   
     self.app.include_router(router)
 

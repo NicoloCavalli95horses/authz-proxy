@@ -7,11 +7,14 @@ from PIL import Image
 from skimage.metrics import structural_similarity
 
 
+# ===========
+# Class
+# ===========
 class ImageCompare:
   def __init__(self, reference_dir="src/playwright/screenshots/reference", target_dir="src/playwright/screenshots/target"):
     self.reference_dir = Path(reference_dir).resolve()
     self.target_dir = Path(target_dir).resolve()
-    self.threshold = 0.8
+    self.threshold = 0.94
 
   def compare(self):
     results = []

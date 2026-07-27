@@ -23,3 +23,7 @@ export async function cleanScreenshots() {
     log(err);
   }
 }
+
+export async function sleep (time) {
+  return new Promise((resolve) => setTimeout(resolve, time));
+}

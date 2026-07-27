@@ -7,6 +7,7 @@ export async function injectHook() {
     if (window.__pageMonitorInstalled) { return; }
     window.__pageMonitorInstalled = true;
     window.__normalizeGUI = installGUINormalizer;
+    window._resetBtnState = resetBtn;
 
     if (document.readyState === "loading") {
       window.addEventListener("load", installAll);
@@ -22,7 +23,7 @@ export async function injectHook() {
   }
 
   function installGUINormalizer() {
-    disableAnimations(); // popups do not work if we disable this
+    // disableAnimations(); // popups do not work if we disable this
     hideIframes();
   }
 
@@ -36,8 +37,18 @@ export async function injectHook() {
     const position = { x: e.clientX, y: e.clientY };
     const r = target.getBoundingClientRect();
     const rect = { x: r.x, y: r.y, width: r.width, height: r.height };
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
 
-    return { tag, id, classes, attributes, text, position, rect };
+    return { tag, id, classes, attributes, text, position, rect, scrollX, scrollY };
+  }
+
+  function resetBtn(state) {
+    const btn = document.getElementById("__playwright_debug");
+    if (!btn) { return; }
+
+    btn.dataset.state = state;
+    btn.innerText = updateBtnLabel(state);
   }
 
   function hideIframes() {

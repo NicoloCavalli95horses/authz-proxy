@@ -17,7 +17,7 @@ export class PageMonitor {
 
     this.storage = {
       initialURL: "",
-      coordinates: [],
+      events: [],
     };
   }
 
@@ -92,28 +92,29 @@ export class PageMonitor {
 
   async onToggleState(page) {
     if (this.busy) { return this.state; }
-    log(`State change request. Current state is: "${this.state.toUpperCase()}"`);
     this.busy = true;
 
     switch (this.state) {
       case "idle":
         this.state = "record";
+        log(`State update: ${this.state.toUpperCase()}`);
         await this.startRecording(page);
         break;
 
       case "record":
         this.state = "replay";
+        log(`State update: ${this.state.toUpperCase()}`);
         await this.startReplay(page);
         break;
 
       case "replay":
-        await this.closeSession();
+        await this.closeSession(page);
         this.state = "idle";
+        log(`State update: ${this.state.toUpperCase()}`);
         break;
     }
 
     this.busy = false;
-    log("State update", this.state);
     return this.state;
   }
 
@@ -121,18 +122,19 @@ export class PageMonitor {
     if (this.busy) { return; }
     if (this.state !== "record") { return; }
 
+    await page.waitForTimeout(500);
     await this.saveScreenshot("reference", page);
 
     log("Click event:", event);
-    this.storage.coordinates.push(event.data.position);
-    log("Updated coordinates:", this.storage.coordinates);
+
+    this.storage.events.push({ ...event.data });
   }
 
   async startRecording(page) {
     await cleanScreenshots();
 
     this.storage.initialURL = page.url();
-    this.storage.coordinates = [];
+    this.storage.events = [];
 
     log("Recording started");
     log("Saved initial URL:", this.storage.initialURL);
@@ -142,25 +144,26 @@ export class PageMonitor {
 
   async startReplay(page) {
     this.counter = 0;
-    log("Replay started");
 
     await apiToggleProxyState(true);
 
     // Go to starting page
-    await page.reload({ waitUntil: "networkidle", timeout: 8000 });
-    await page.goto(this.storage.initialURL, { waitUntil: "networkidle", timeout: 8000 });
-    await page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 2000 }).catch(() => null);
+    log("Reloading page...")
+    await page.goto(this.storage.initialURL, { waitUntil: "domcontentloaded", timeout: 4000 }).catch(() => null);
+    await page.waitForTimeout(3000);
 
-    if (!this.storage.coordinates.length) { return; }
+    if (!this.storage.events.length) { return; }
+    log("Sequence of events to replay:", this.storage.events);
 
     await this.saveScreenshot("target", page);
 
-    for (const pos of this.storage.coordinates) {
-      await this.clickAndWait(pos, page);
+    for (const e of this.storage.events) {
+      await this.clickAndWait(e, page);
+      log('Replaying event:', e);
       await this.saveScreenshot("target", page);
     }
 
-    await this.closeSession();
+    await this.closeSession(page);
   }
 
   async saveScreenshot(type, page) {
@@ -170,53 +173,58 @@ export class PageMonitor {
     log("New screenshot at", path);
   }
 
-  async clickAndWait(pos, page) {
-    const navigation = page.waitForNavigation({
-      waitUntil: "domcontentloaded",
-      timeout: 2000
-    }).catch(() => null);
+  async clickAndWait(event, page) {
+    await page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 2000 }).catch(() => null);
+    await page.evaluate((event) => {
+      window.scrollTo(event.scrollX, event.scrollY);
+    }, event);
 
-    await page.mouse.click(pos.x, pos.y);
-    await navigation;
+    await page.waitForTimeout(100); // wait for scroll
 
+    await page.mouse.click(event.position.x, event.position.y);
     await this.waitForStableDOM(page);
   }
 
   // Observe DOM mutation, wait till no mutations are observed or MAX_WAIT
-  async waitForStableDOM(page) {
-    await page.evaluate(() => {
-      return new Promise(resolve => {
-        let timer;
-        const MAX_WAIT = 5000;
+  async waitForStableDOM(page, MAX_WAIT = 3000) {
+    await Promise.race([
+      page.evaluate((MAX_WAIT) => {
+        return new Promise(resolve => {
+          let timer;
+          const timeout = setTimeout(done, MAX_WAIT);
 
-        const timeout = setTimeout(done, MAX_WAIT);
+          function done() {
+            clearTimeout(timer);
+            observer.disconnect();
+            resolve();
+          }
 
-        function done() {
-          clearTimeout(timer);
-          observer.disconnect();
-          resolve();
-        }
+          const observer = new MutationObserver(() => {
+            clearTimeout(timer);
+            timer = setTimeout(done, 500);
+          });
 
-        const observer = new MutationObserver(() => {
-          clearTimeout(timer);
+          observer.observe(document, {
+            subtree: true,
+            childList: true,
+            attributes: true,
+            characterData: true,
+          });
+
           timer = setTimeout(done, 500);
         });
-
-        observer.observe(document, {
-          subtree: true,
-          childList: true,
-          attributes: true,
-          characterData: true,
-        });
-
-        timer = setTimeout(done, 500);
-      });
-    });
+      }, MAX_WAIT).catch(() => {}),
+      new Promise(resolve => setTimeout(resolve, MAX_WAIT + 500))
+    ])
   }
 
-  async closeSession() {
+  async closeSession(page) {
     await apiToggleProxyState(false);
     await apiStartAnalysis();
     log("Replay done");
+
+    await page.evaluate((state) => {
+      window._resetBtnState?.(state);
+    }, "idle");
   }
 }
