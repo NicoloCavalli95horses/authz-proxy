@@ -1,7 +1,7 @@
 //==============================
 // Import
 //==============================
-import { log } from '../utils/utils.js';
+import { log } from './utils.js';
 
 
 //==============================
@@ -15,9 +15,17 @@ const BASE_URL = `http://${process.env.API_HOST}:${process.env.API_PORT}/api`;
 //==============================
 
 export async function apiToggleProxyState(enable) {
-  const url = `${BASE_URL}/${enable ? 'start' : 'stop'}`;
+  const url = `${BASE_URL}/${enable ? 'start-proxy' : 'stop-proxy'}`;
   const options = _getApiOptions({ method: "POST" });
   log("[Fetch API] Requested new proxy state: " + enable)
+
+  return await _executeApi({ url, options });
+}
+
+export async function apiStartAnalysis() {
+  const url = `${BASE_URL}/start-analysis`;
+  const options = _getApiOptions({ method: "POST" });
+  log("[Fetch API] Requested new analysis")
 
   return await _executeApi({ url, options });
 }

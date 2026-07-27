@@ -14,7 +14,7 @@ import 'dotenv/config';
 async function connect() {
   log("Try connecting to Chrome...");
   try {
-    const browser = await chromium.connectOverCDP("http://127.0.0.1:9222");
+    const browser = await chromium.connectOverCDP(`http://${process.env.API_HOST}:${process.env.CHROME_DEBUG_PORT}`);
     log("Connected!");
     return browser;
   } catch (error) {
@@ -34,15 +34,23 @@ async function bootstrap() {
   // New tab/popup
   context.on("page", async (page) => {
     log("Current page:", page.url());
+    await configurePage(page);
     await monitor.attach(page);
   });
 
   // Monitor existing page
   for (const page of context.pages()) {
+    await configurePage(page);
     await monitor.attach(page);
   }
 }
 
+// Disable client cache
+async function configurePage(page) {
+  const client = await page.context().newCDPSession(page);
+  await client.send("Network.setCacheDisabled", { cacheDisabled: true });
+  await client.send("Network.setBypassServiceWorker", { bypass: true });
+}
 
 
 await bootstrap();

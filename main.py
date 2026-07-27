@@ -2,13 +2,16 @@
 # Import
 # ===========
 from mitmproxy import http # type: ignore
-from analyzers.request_handler import RequestHandler
-from analyzers.response_handler import ResponseHandler
-from state import ProxyState
-from server import Server
+from src.http_modules.request_handler import RequestHandler
+from src.http_modules.response_handler import ResponseHandler
+from src.state import ProxyState
+from src.server import Server
 import threading
 
 
+# ===========
+# Services
+# ===========
 state = ProxyState()
 server = Server(state)
 

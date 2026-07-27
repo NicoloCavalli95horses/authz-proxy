@@ -1,7 +1,7 @@
 // ===========
 // Import
 // ===========
-import { apiToggleProxyState } from "../utils/api.js";
+import { apiStartAnalysis, apiToggleProxyState } from "../utils/api.js";
 import { cleanScreenshots, log } from "../utils/utils.js";
 import { injectHook } from "./injectHook.js";
 
@@ -92,7 +92,7 @@ export class PageMonitor {
 
   async onToggleState(page) {
     if (this.busy) { return this.state; }
-    log("State change request. Current state is", this.state);
+    log(`State change request. Current state is: "${this.state.toUpperCase()}"`);
     this.busy = true;
 
     switch (this.state) {
@@ -147,7 +147,9 @@ export class PageMonitor {
     await apiToggleProxyState(true);
 
     // Go to starting page
-    await page.goto(this.storage.initialURL, { waitUntil: "networkidle" });
+    await page.reload({ waitUntil: "networkidle", timeout: 8000 });
+    await page.goto(this.storage.initialURL, { waitUntil: "networkidle", timeout: 8000 });
+    await page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 2000 }).catch(() => null);
 
     if (!this.storage.coordinates.length) { return; }
 
@@ -214,6 +216,7 @@ export class PageMonitor {
 
   async closeSession() {
     await apiToggleProxyState(false);
+    await apiStartAnalysis();
     log("Replay done");
   }
 }

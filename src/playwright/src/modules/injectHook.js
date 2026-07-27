@@ -22,8 +22,8 @@ export async function injectHook() {
   }
 
   function installGUINormalizer() {
-    // disableAnimations();
-    // hideIframes();
+    disableAnimations(); // popups do not work if we disable this
+    hideIframes();
   }
 
   function getTargetInfo(e) {

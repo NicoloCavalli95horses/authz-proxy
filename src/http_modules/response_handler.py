@@ -3,13 +3,13 @@
 # ===========
 import json
 import os
-from analyzers.utils.json_walker import JsonWalker 
-from analyzers.strategies.key_mutation import KeyMutationStrategy
-from analyzers.strategies.value_mutation import ValueMutationStrategy
+from .utils.json_walker import JsonWalker 
+from .strategies.key_mutation import KeyMutationStrategy
+from .strategies.value_mutation import ValueMutationStrategy
 from dotenv import load_dotenv
 
 load_dotenv()
-IS_PROXY_ACTIVE = os.getenv("IS_PROXY_ACTIVE", "false").lower() == "true"
+FORCE_PROXY_ACTIVE = os.getenv("FORCE_PROXY_ACTIVE", "false").lower() == "true"
 
 # ===========
 # Class
@@ -25,7 +25,13 @@ class ResponseHandler:
     
 
   def analyze(self, flow):
-    if not self.state.enabled and not IS_PROXY_ACTIVE:
+    # Prevent browser from caching data in any case
+    flow.response.headers["cache-control"] = "no-store, no-cache, must-revalidate"
+    flow.response.headers["pragma"] = "no-cache"
+    flow.response.headers["expires"] = "0"
+    flow.response.headers["vary"] = "*"
+    
+    if not self.state.enabled and not FORCE_PROXY_ACTIVE:
       return
 
     content_type = flow.response.headers.get("content-type", "")

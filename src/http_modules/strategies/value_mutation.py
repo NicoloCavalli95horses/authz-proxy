@@ -1,7 +1,7 @@
 # ===========
 # Import
 # ===========
-from analyzers.strategies.base_mutation import BaseMutationStrategy
+from .base_mutation import BaseMutationStrategy
 
 
 # ===========

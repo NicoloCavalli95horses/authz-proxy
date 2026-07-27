@@ -2,7 +2,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-mkdir -p "$DIR/logs"
+mkdir -p "$DIR/src/logs"
 
 if [ -f "$DIR/.env" ]; then
   export $(grep -v '^#' "$DIR/.env" | xargs)
@@ -28,7 +28,7 @@ trap cleanup SIGINT SIGTERM EXIT
 $DIR/.venv/bin/mitmdump \
     --listen-port "$MITM_PORT" \
     -s "$DIR/main.py" \
-    > "$DIR/logs/mitm.log" 2>&1 &
+    > "$DIR/src/logs/mitm.log" 2>&1 &
 
 MITM_PID=$!
 
@@ -36,10 +36,10 @@ sleep 2
 
 # Start Chrome
 google-chrome \
-    --remote-debugging-port="$CHROME_DEBUG_PORT" \
-    --proxy-server="http://127.0.0.1:$MITM_PORT" \
-    --user-data-dir="$HOME/chrome-mitm-profile" \
-    > "$DIR/logs/chrome.log" 2>&1 &
+  --remote-debugging-port="$CHROME_DEBUG_PORT" \
+  --proxy-server="http://127.0.0.1:$MITM_PORT" \
+  --user-data-dir="$HOME/chrome-mitm-profile" \
+  > "$DIR/src/logs/chrome.log" 2>&1 &
 
 CHROME_PID=$!
 
@@ -47,8 +47,8 @@ sleep 3
 
 # Start Playwright
 (
-  cd "$DIR/playwright"
-  node index.js > "$DIR/logs/playwright.log" 2>&1
+  cd "$DIR/src/playwright"
+  node index.js > "$DIR/src/logs/playwright.log" 2>&1
 ) &
 
 PLAYWRIGHT_PID=$!
