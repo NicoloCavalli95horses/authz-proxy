@@ -14,6 +14,9 @@ export class PageMonitor {
     this.pages = new WeakSet();
     this.state = "idle";
     this.busy = false;
+    this.lastTimestamp = 0;
+    this.SCREENSHOT_DELAY_MS = 800;
+    this.FULL_PAGE_RELOAD_DELAY_MS = 2000;
 
     this.storage = {
       initialURL: "",
@@ -122,12 +125,16 @@ export class PageMonitor {
     if (this.busy) { return; }
     if (this.state !== "record") { return; }
 
-    await page.waitForTimeout(500);
+    const now = performance.now();
+    const elapsedTime = this.lastTimestamp ? now - this.lastTimestamp : 0;
+    this.lastTimestamp = now;
+
+    await page.waitForTimeout(this.SCREENSHOT_DELAY_MS);
     await this.saveScreenshot("reference", page);
 
     log("Click event:", event);
 
-    this.storage.events.push({ ...event.data });
+    this.storage.events.push({ ...event.data, elapsedTime: Math.round(elapsedTime) });
   }
 
   async startRecording(page) {
@@ -135,11 +142,13 @@ export class PageMonitor {
 
     this.storage.initialURL = page.url();
     this.storage.events = [];
-
+    
     log("Recording started");
     log("Saved initial URL:", this.storage.initialURL);
-
+    
     await this.saveScreenshot("reference", page);
+
+    this.lastTimestamp = performance.now();
   }
 
   async startReplay(page) {
@@ -150,7 +159,7 @@ export class PageMonitor {
     // Go to starting page
     log("Reloading page...")
     await page.goto(this.storage.initialURL, { waitUntil: "domcontentloaded", timeout: 4000 }).catch(() => null);
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(this.FULL_PAGE_RELOAD_DELAY_MS);
 
     if (!this.storage.events.length) { return; }
     log("Sequence of events to replay:", this.storage.events);
@@ -158,8 +167,10 @@ export class PageMonitor {
     await this.saveScreenshot("target", page);
 
     for (const e of this.storage.events) {
-      await this.clickAndWait(e, page);
+      await page.waitForTimeout(e.elapsedTime);
       log('Replaying event:', e);
+      await page.mouse.click(e.position.x, e.position.y);
+      await page.waitForTimeout(this.SCREENSHOT_DELAY_MS);
       await this.saveScreenshot("target", page);
     }
 
@@ -171,51 +182,6 @@ export class PageMonitor {
     const path = `./screenshots/${type}/screenshot_${this.counter}.png`;
     await page.screenshot({ path });
     log("New screenshot at", path);
-  }
-
-  async clickAndWait(event, page) {
-    await page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 2000 }).catch(() => null);
-    await page.evaluate((event) => {
-      window.scrollTo(event.scrollX, event.scrollY);
-    }, event);
-
-    await page.waitForTimeout(100); // wait for scroll
-
-    await page.mouse.click(event.position.x, event.position.y);
-    await this.waitForStableDOM(page);
-  }
-
-  // Observe DOM mutation, wait till no mutations are observed or MAX_WAIT
-  async waitForStableDOM(page, MAX_WAIT = 3000) {
-    await Promise.race([
-      page.evaluate((MAX_WAIT) => {
-        return new Promise(resolve => {
-          let timer;
-          const timeout = setTimeout(done, MAX_WAIT);
-
-          function done() {
-            clearTimeout(timer);
-            observer.disconnect();
-            resolve();
-          }
-
-          const observer = new MutationObserver(() => {
-            clearTimeout(timer);
-            timer = setTimeout(done, 500);
-          });
-
-          observer.observe(document, {
-            subtree: true,
-            childList: true,
-            attributes: true,
-            characterData: true,
-          });
-
-          timer = setTimeout(done, 500);
-        });
-      }, MAX_WAIT).catch(() => {}),
-      new Promise(resolve => setTimeout(resolve, MAX_WAIT + 500))
-    ])
   }
 
   async closeSession(page) {
