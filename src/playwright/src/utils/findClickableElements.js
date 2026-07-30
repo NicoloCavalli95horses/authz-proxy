@@ -1,4 +1,7 @@
-export function highlightClickableElements() {
+// findClickableElements.js
+// finds and returns clickable DOM elements (candidates)
+
+export function findClickableDOMEl() {
   // Remove possible existing highlight
   document.querySelectorAll("._redRect").forEach(el => {
     el.classList.remove("_redRect");
@@ -41,6 +44,8 @@ export function highlightClickableElements() {
 
   for (const el of all) {
     if (!(el instanceof HTMLElement)) { continue; }
+    if (el.id === "__playwright_debug") { continue; }
+    
     const reasons = [];
     //-------------------------
     // TAG
@@ -150,6 +155,6 @@ export function highlightClickableElements() {
 
   }
 
-  console.table(clickable);
+  console.log(clickable);
   return clickable;
 }

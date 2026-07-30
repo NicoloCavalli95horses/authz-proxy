@@ -1,4 +1,6 @@
+// injectHook.js
 // This function is injected in the visited webpage
+
 export async function injectHook() {
   await bootstrap();
 

@@ -1,3 +1,7 @@
+// PageMonitor.js
+// This monitor coordinates the injected script (injectHook.js) and the Playwright APIs
+// It makes use of an istance of StateManager() to handle state changes from the GUI
+
 // ===========
 // Import
 // ===========

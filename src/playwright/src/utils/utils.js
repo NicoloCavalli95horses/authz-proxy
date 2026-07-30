@@ -1,3 +1,6 @@
+// Utils.js
+// This file contains general utility functions and classes
+
 // ===========
 // Import
 // ===========

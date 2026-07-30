@@ -1,3 +1,7 @@
+// StateManager.js
+// This class is a layer between PageMonitor() and StateMachine()
+// It instantiates a state machine class and orchestrates the callbacks to be executed for each state
+
 //===================
 // Import
 //===================

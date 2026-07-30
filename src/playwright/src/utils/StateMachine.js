@@ -1,3 +1,9 @@
+// StateMachine.js
+// A general state machine that supports different callbacks:
+// - onExit: executed before the state change
+// - onEnter: executed on state change
+// - onEvent: executed when an event is received (eg. click)
+
 //===================
 // Import
 //===================

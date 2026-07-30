@@ -1,3 +1,6 @@
+// api.js
+// Network-related functionalities
+
 //==============================
 // Import
 //==============================

@@ -1,3 +1,5 @@
+// index.js
+// Entry point of the project. Bootstraps Playwright, initializes the page monitor, injects scripts
 // ===========
 // Import
 // ===========
