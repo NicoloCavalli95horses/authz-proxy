@@ -5,6 +5,7 @@ import { chromium } from "playwright";
 import { PageMonitor } from "./src/modules/PageMonitor.js";
 import { log } from "./src/utils/utils.js";
 import { injectHook } from "./src/modules/injectHook.js";
+import { StateManager } from "./src/modules/StateManager.js";
 import 'dotenv/config';
 
 
@@ -12,13 +13,13 @@ import 'dotenv/config';
 // Main
 // ===========
 async function connect() {
-  log("Try connecting to Chrome...");
+  log("[Index] Try connecting to Chrome...");
   try {
     const browser = await chromium.connectOverCDP(`http://${process.env.API_HOST}:${process.env.CHROME_DEBUG_PORT}`);
-    log("Connected!");
+    log("[Index] Connected to Chrome");
     return browser;
   } catch (error) {
-    log("Connection error: ", error);
+    log("[Index] Connection error: ", error);
   }
 }
 
@@ -26,14 +27,16 @@ async function connect() {
 async function bootstrap() {
   const browser = await connect();
   const context = browser.contexts()[0];
-  const monitor = new PageMonitor();
+  const stateManager = new StateManager();
+  stateManager.init();
+  const monitor = new PageMonitor(stateManager);
 
   // Hook for all documents
   await context.addInitScript(injectHook);
 
   // New tab/popup
   context.on("page", async (page) => {
-    log("Current page:", page.url());
+    log("[Index] Current page:", page.url());
     await configurePage(page);
     await monitor.attach(page);
   });

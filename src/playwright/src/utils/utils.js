@@ -12,18 +12,6 @@ export function log(...args) {
   console.log(`\n[${t}][PLAYWRIGHT]`, ...args);
 }
 
-export async function cleanScreenshots() {
-  try {
-    log("Cleaning screenshots...");
-    for (const dir of ["./screenshots/reference", "./screenshots/target"]) {
-      await rm(dir, { recursive: true, force: true });
-      await mkdir(dir, { recursive: true });
-    }
-  } catch (err) {
-    log(err);
-  }
-}
-
 export async function sleep (time) {
   return new Promise((resolve) => setTimeout(resolve, time));
 }

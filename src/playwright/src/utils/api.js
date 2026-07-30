@@ -17,7 +17,7 @@ const BASE_URL = `http://${process.env.API_HOST}:${process.env.API_PORT}/api`;
 export async function apiToggleProxyState(enable) {
   const url = `${BASE_URL}/${enable ? 'start-proxy' : 'stop-proxy'}`;
   const options = _getApiOptions({ method: "POST" });
-  log("[Fetch API] Requested new proxy state: " + enable)
+  log("[API] Requested new proxy state: " + enable)
 
   return await _executeApi({ url, options });
 }
@@ -25,7 +25,7 @@ export async function apiToggleProxyState(enable) {
 export async function apiStartAnalysis() {
   const url = `${BASE_URL}/start-analysis`;
   const options = _getApiOptions({ method: "POST" });
-  log("[Fetch API] Requested new analysis")
+  log("[API] Requested new analysis")
 
   return await _executeApi({ url, options });
 }
@@ -41,13 +41,13 @@ async function _executeApi({ url, options }) {
       return data;
     } else {
       const msg = data?.message || 'Unknown error';
-      log({ msg, time: 3000 });
+      log('[API]', { msg, time: 3000 });
       return null;
     }
 
   } catch (err) {
     console.error('Request error:', err);
-    log({ msg: 'Request error' });
+    log('[API]', { msg: 'Request error' });
     return null;
   }
 }
