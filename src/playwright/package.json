@@ -12,6 +12,7 @@
   "type": "module",
   "dependencies": {
     "dotenv": "^17.4.2",
+    "page-agent": "^1.12.2",
     "playwright": "^1.61.1"
   }
 }

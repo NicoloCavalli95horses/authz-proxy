@@ -99,9 +99,9 @@ export class PageMonitor {
 
     switch (this.state) {
       case "idle":
-        this.state = "record";
+        this.state = "exploration";
         log(`State update: ${this.state.toUpperCase()}`);
-        await this.startRecording(page);
+        await this.startExploration(page);
         break;
 
       case "record":
@@ -137,18 +137,23 @@ export class PageMonitor {
     this.storage.events.push({ ...event.data, elapsedTime: Math.round(elapsedTime) });
   }
 
-  async startRecording(page) {
-    await cleanScreenshots();
-
+  async startExploration(page) {
     this.storage.initialURL = page.url();
     this.storage.events = [];
     
-    log("Recording started");
+    log("Exploration started");
     log("Saved initial URL:", this.storage.initialURL);
-    
-    await this.saveScreenshot("reference", page);
 
-    this.lastTimestamp = performance.now();
+    const prompt = `
+      Find one locked or premium lesson and attempt to access its content using the available user interface.
+      If you find a paywall, conclude your exploration and end the task. Avoid analysis and reasoning, prioritize speed over completeness.
+      `;
+
+    const results = await page.evaluate(task => {
+      return window.__executePageAgent.execute(task);
+    }, prompt);
+
+    log('Results from first exploration', results);
   }
 
   async startReplay(page) {

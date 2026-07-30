@@ -1,30 +1,49 @@
 // This function is injected in the visited webpage
 export async function injectHook() {
+  let agent = null;
   await bootstrap();
 
   async function bootstrap() {
     // Do not inject two times
     if (window.__pageMonitorInstalled) { return; }
     window.__pageMonitorInstalled = true;
-    window.__normalizeGUI = installGUINormalizer;
-    window._resetBtnState = resetBtn;
-
+    
     if (document.readyState === "loading") {
       window.addEventListener("load", installAll);
     } else {
       await installAll();
     }
+    
+    window._resetBtnState = resetBtn;
+    window.__executePageAgent = {
+      execute: executePageAgent,
+      reset: () => { agent = null; },
+    };
+  }
+
+  async function executePageAgent(task) {
+    if (!agent) {
+      agent = new window.PageAgent({ baseURL: "http://localhost:11434/v1", model: "qwen3:14b"});
+    }
+    return await agent.execute(task);
   }
 
   async function installAll() {
-    await installButton();
     installClickListener();
-    installGUINormalizer();
+    await installButton();
+    await installPageAgent();
   }
 
-  function installGUINormalizer() {
-    // disableAnimations(); // popups do not work if we disable this
-    hideIframes();
+  async function installPageAgent() {
+    if (window.PageAgent) { return; }
+
+    await new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/page-agent@1.12.2/dist/iife/page-agent.demo.js?autoInit=false";
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
   }
 
   function getTargetInfo(e) {
@@ -51,41 +70,13 @@ export async function injectHook() {
     btn.innerText = updateBtnLabel(state);
   }
 
-  function hideIframes() {
-    document.querySelectorAll("iframe").forEach(iframe => {
-      iframe.style.background = "white";
-      iframe.style.visibility = "hidden";
-    });
-  }
-
-  function disableAnimations() {
-    if (document.getElementById("__screenshot_normalizer")) { return; }
-
-    const style = document.createElement("style");
-
-    style.id = "__screenshot_normalizer";
-
-    style.textContent = `
-        *,
-        *::before,
-        *::after {
-            animation: none !important;
-            transition: none !important;
-            caret-color: transparent !important;
-            scroll-behavior: auto !important;
-        }
-    `;
-
-    document.head.appendChild(style);
-  }
-
   function updateBtnLabel(state) {
     switch (state) {
       case "idle":
-        return "click to record";
+        return "launch exploration";
 
-      case "record":
-        return "recording ⏺️";
+      case "exploration":
+        return "in progress...";
 
       case "replay":
         return "replaying ▶️";
@@ -93,10 +84,6 @@ export async function injectHook() {
       default:
         return "click to record";
     }
-  }
-
-  function canEmitClick(e) {
-    return !e.target.closest("#__playwright_debug") && typeof window._emitClickEvent === "function";
   }
 
   async function installButton() {
@@ -138,7 +125,8 @@ export async function injectHook() {
 
   function installClickListener() {
     document.addEventListener("click", e => {
-      if (canEmitClick(e)) {
+      const canEmitClick = !e.target.closest("#__playwright_debug") && typeof window._emitClickEvent === "function";
+      if (canEmitClick) {
         window._emitClickEvent({ data: getTargetInfo(e) });
       }
     }, true);
