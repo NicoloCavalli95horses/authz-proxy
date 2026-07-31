@@ -16,29 +16,33 @@ export class GraphManager {
   constructor(page) {
     this.page = page;
     this.graph = new Graph();
-    this.currentNodeId = null;
   }
 
-  async addNode() {
-    const { snapshot, clickableEls } = await this.getDataFromBrowser();
+  async addNode(overrides = {}) {
 
-    const data = {
-      url: this.page.url(),
-      dom: {
-        snapshot,
-        clickableEls,
-        hash: this.getDOMhash(snapshot),
-      },
-      network: {
-        requests: [],
-        responses: []
-      },
-      explored: false,
-      parent: this.currentNodeId,
+    let data = {
+      visiting: false,  // true at the beginning of the exploration and false at the end of the exploration
+      explored: false,  // true at the end of the exploration (eg clicked everywhere)
+      parent: null,     // assigned during exploration
+      path: []          // previous actions to get to this state
+    };
+
+    if (overrides.dom === undefined) {
+      const { snapshot, clickableEls } = await this.getDataFromBrowser();
+
+      Object.assign(data, {
+        url: this.page.url(),
+        dom: {
+          snapshot,
+          clickableEls,
+          hash: this.getDOMhash(snapshot)
+        }
+      });
     }
 
-    this.currentNodeId = this.graph.addNode(data);
-    return this.currentNodeId;
+    Object.assign(data, overrides);
+    
+    return this.graph.addNode(data);
   }
 
   setCurrentNodeId(id) {
@@ -59,6 +63,23 @@ export class GraphManager {
       return { snapshot, clickableEls };
 
     }, findClickableDOMEl.toString());
+  }
+
+  // used to preview current DOM state without adding it to the graph
+  async captureState() {
+    const { snapshot, clickableEls } = await this.getDataFromBrowser();
+    return {
+      url: this.page.url(),
+      dom: {
+        snapshot,
+        clickableEls,
+        hash: this.getDOMhash(snapshot),
+      }
+    }
+  }
+
+  addEdge({ from, to, action }) {
+    return this.graph.addEdge(from, to, action);
   }
 
   getDOMhash(dom) {

@@ -2,6 +2,41 @@
 // finds and returns clickable DOM elements (candidates)
 
 export function findClickableDOMEl() {
+
+  // Create unique selector based on relations with parent and sibling tags
+  // We do not consider classes or attributes because these identifiers may not be stable
+  function getUniqueSelector(el) {
+    const parts = [];
+
+    while (el) {
+      if (el.tagName === "HTML") {
+        parts.unshift("html");
+        break;
+      }
+
+      if (el.tagName === "BODY") {
+        parts.unshift("body");
+        el = el.parentElement;
+        continue;
+      }
+      
+      const tag = el.tagName.toLowerCase();
+      let index = 1;
+      let sib = el;
+
+      while (sib = sib.previousElementSibling) {
+        if (sib.tagName === el.tagName) {
+          index++;
+        }
+      }
+
+      parts.unshift(`${tag}:nth-of-type(${index})`);
+      el = el.parentElement;
+    }
+
+    return parts.join(" > ");
+  }
+
   // Remove possible existing highlight
   document.querySelectorAll("._redRect").forEach(el => {
     el.classList.remove("_redRect");
@@ -45,7 +80,7 @@ export function findClickableDOMEl() {
   for (const el of all) {
     if (!(el instanceof HTMLElement)) { continue; }
     if (el.id === "__playwright_debug") { continue; }
-    
+
     const reasons = [];
     //-------------------------
     // TAG
@@ -67,7 +102,7 @@ export function findClickableDOMEl() {
 
     if (tag === "input") {
       const t = (el.getAttribute("type") || "").toLowerCase();
-      if (["button", "submit", "reset", "radio", "checkbox"].includes(t)) {
+      if (["button", "radio", "checkbox"].includes(t)) { // exclude input type="text" and similar
         reasons.push("input:" + t);
       }
     }
@@ -91,6 +126,10 @@ export function findClickableDOMEl() {
     //-------------------------
     // ARIA
     //-------------------------
+    if (el.hasAttribute("disabled")) {
+      continue;
+    }
+
     if (el.hasAttribute("aria-expanded")) {
       reasons.push("aria-expanded");
     }
@@ -115,7 +154,7 @@ export function findClickableDOMEl() {
     //-------------------------
     const style = window.getComputedStyle(el);
 
-    if (style.pointerEvents === "none") {
+    if (style.pointerEvents === "none" || style.visibility === "hidden") {
       continue;
     }
 
@@ -127,14 +166,12 @@ export function findClickableDOMEl() {
     //-------------------------
     // Exclude invisible elements
     //-------------------------
-    const rect = el.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const top = document.elementFromPoint(cx, cy);
 
-    if (
-      rect.width <= 1 ||
-      rect.height <= 1 ||
-      style.display === "none" ||
-      style.visibility === "hidden"
-    ) {
+    if (top !== el && !el.contains(top)) {
       continue;
     }
 
@@ -145,10 +182,13 @@ export function findClickableDOMEl() {
       el.classList.add("_redRect");
       el.dataset.clickableReason = reasons.join(",");
       clickable.push({
+        type: "click",
         tag,
-        text: el.innerText?.trim().slice(0, 80),
+        textContent: el.innerText?.trim().slice(0, 80),
         id: el.id,
-        class: el.className,
+        classes: el.className,
+        attributes: el.getAttributeNames(),
+        selector: getUniqueSelector(el),
         reasons
       });
     }

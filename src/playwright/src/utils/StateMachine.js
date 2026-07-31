@@ -78,18 +78,6 @@ export class StateMachine {
     }
   }
 
-
-  async handleEvent(event, ...args) {
-    const state = this.states.get(this.currentState);
-
-    if (!state?.onEvent) {
-      throw new Error(`[StateMachine] Missing event handler for state '${this.currentState}'`);
-    }
-
-    return await state.onEvent(event, ...args);
-  }
-
-
   getState() {
     return this.currentState ?? null;
   }

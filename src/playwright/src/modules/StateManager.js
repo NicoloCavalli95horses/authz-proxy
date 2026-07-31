@@ -8,6 +8,7 @@
 import { StateMachine } from "../utils/StateMachine.js";
 import { startAnalysis } from "./Analysis.js";
 import { log } from "../utils/utils.js";
+import { EventBus } from "../utils/eventBus.js";
 
 
 //===================
@@ -16,27 +17,18 @@ import { log } from "../utils/utils.js";
 export class StateManager {
   constructor() {
     this.stateMachine = new StateMachine();
+    this.eventBus = new EventBus();
   }
 
   init() {
     this.stateMachine.addState("idle", {
-      onEnter: () => {},
-      onExit: () => {},
-      onEvent: async (event, page) => {
-        if (event.type == "CLICK") {
-          log("[StateManager] Ignoring click in idle");
-        }
-      }
+      onEnter: () => { },
+      onExit: () => { },
     });
 
     this.stateMachine.addState("analysis", {
       onEnter: startAnalysis,
-      onExit: () => {},
-      onEvent: async (event, page) => {
-        if (event.type == "CLICK") {
-          log("[StateManager] Click during analysis");
-        }
-      }
+      onExit: () => { },
     });
 
     this.stateMachine.setInitialState("idle");
@@ -44,20 +36,18 @@ export class StateManager {
 
 
   async handleEvent(page, event) {
-    switch (event.type) {
-      case "STATE_CHANGE_REQUEST":
-        return await this.handleStateChangeRequest(page);
-
-      default:
-        return await this.stateMachine.handleEvent(event, page);
+    if (event.type === "STATE_CHANGE_REQUEST") {
+      return await this.handleStateChangeRequest(page);
     }
+
+    this.eventBus.emit(event);
   }
 
 
   async handleStateChangeRequest(page) {
     switch (this.getState()) {
       case "idle":
-        await this.stateMachine.transition("analysis", page);
+        await this.stateMachine.transition("analysis", page, this.eventBus);
         break;
 
       default:

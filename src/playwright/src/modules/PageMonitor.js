@@ -5,7 +5,7 @@
 // ===========
 // Import
 // ===========
-import { injectHook } from "./injectHook.js";
+import { injectHook } from "../utils/injectHook.js";
 import { log } from "../utils/utils.js";
 
 

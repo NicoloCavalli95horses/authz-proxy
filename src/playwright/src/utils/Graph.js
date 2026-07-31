@@ -23,28 +23,32 @@ node: {
     snapshot: {},                // entire DOM available in that state
     hash: "",                    // to compare different states/nodes
   },
-  network: {
-    requests: [],
-    responses: []
-  },
   url: "",                       // URL of the current state
-  explored: false,               // to prevent re-exploring the same node
+  explored: false,               // true at the end of the exploration. Prevents re-exploring the same node
+  visited: false,                // true while exploring, false at the end
   parent: ""                     // previous state id (undefined for the first node)
+  path: []                       // previous actions to get to this state
 }
 
-Each edge is an interaction with the GUI (eg. click)
+Each edge is an interaction with the GUI (eg. click).
+It includes also the observed effect (eg. URL change, HTTP request)
 
 edge: {
   from: "S0"
   to: "S1"
   action: {
     type: "click",
-    classes: undefined,
-    attributes: undefined,
-    role: undefined,
-    textContent: undefined,
-    coordinates: { x, y }
-  }
+    tag,
+    textContent,
+    id,
+    classes,
+    selector,
+    reasons,
+    network: {
+      requests: [],
+      responses: []
+    },
+  },
 }  
 */
 
@@ -60,7 +64,7 @@ export class Graph {
     const hash = data.dom?.hash;
 
     if (hash && this.hashes.has(hash)) {
-      return this.hashes.get(hash);
+      return this.getNodeByHash(hash);
     }
 
     const id = `S${this.counter++}`;
@@ -70,7 +74,7 @@ export class Graph {
       this.hashes.set(hash, id); // update hashes map
     }
 
-    return id;
+    return this.getNodeById(id);
   }
 
   addEdge(from, to, action) {
@@ -94,7 +98,7 @@ export class Graph {
   }
 
   getNodeById(id) {
-    this.nodes.get(id);
+    return this.nodes.get(id);
   }
 
   getNodeByHash(hash) {
