@@ -21,20 +21,18 @@ class Server:
   def register_routes(self):
     router = APIRouter(prefix="/api")
     
-    @router.post("/start-proxy")
-    def start_proxy():
-      self.state.enabled = True
+    @router.put("/proxy")
+    def update_proxy_state(payload: dict):
+      enabled = payload.get("enable", False)
+      self.state.enabled = enabled
       print(f"Proxy state update: {self.state.enabled}")
-      return {"status": "enabled"}
-
-    @router.post("/stop-proxy")
-    def stop_proxy():
-      self.state.enabled = False
-      print(f"Proxy state update: {self.state.enabled}")
-      return {"status": "disabled"}
+      return {"enabled": self.state.enabled}
     
-    @router.post("/start-analysis")
-    def start_analysis():
+    @router.post("/analysis")
+    def start_analysis(payload: dict):
+      if payload.get("status") != "start":
+        return {"status": "not valid"}
+      
       print("Image analysis launched")
       comparer = ImageCompare()
       results = comparer.compare()

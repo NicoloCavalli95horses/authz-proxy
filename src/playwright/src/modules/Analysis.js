@@ -21,14 +21,21 @@ class Analysis {
     this.page = page;
     this.eventBus = eventBus;
     this.unsubscribe = undefined;
-    this.currentTransition = {};
+    this.currentTransition = {
+      network: {
+        requests: [],
+        responses: [],
+        navigation: []
+      }
+    };
     this.pendingRequests = new Set();
     this.lastActivity = Date.now();
+    this.initialURL = undefined;
   }
 
   async init() {
     const requestHandler = (req) => {
-      if (!this.currentTransition) { return; }
+      if (!this.currentTransition.data) { return; }
       const requestData = { url: req.url(), headers: req.headers(), method: req.method(), resourceType: req.resourceType() };
 
       if (["POST", "PUT", "PATCH"].includes(req.method())) {
@@ -50,7 +57,7 @@ class Analysis {
     };
 
     const responseHandler = (res) => {
-      if (!this.currentTransition) { return; }
+      if (!this.currentTransition.data) { return; }
       this.currentTransition.network.responses.push({ url: res.url(), status: res.status() });
       this.pendingRequests.delete(res.request());
       this.lastActivity = Date.now();
@@ -71,7 +78,7 @@ class Analysis {
   }
 
   handleEvent(event) {
-    if (event.type === "NAVIGATION_ATTEMPT" && this.currentTransition) {
+    if (event.type === "NAVIGATION_ATTEMPT" && this.currentTransition.data) {
       log('[Analysis]', event);
       this.currentTransition.network.navigation.push(event);
       this.lastActivity = Date.now();
@@ -84,13 +91,13 @@ class Analysis {
     const graph = new GraphManager(this.page);
     const S0 = await graph.addNode();
 
-    log("[Analysis] exploring page:", S0.url);
+    this.initialURL = S0.url;
+    log("[Analysis] Saved initial page:", S0.url);
+
     await this.exploreState({ graph, state: S0, depth: 0, maxDepth: 1 });
 
     const end = performance.now();
     log(`[Analysis] Exploration done in: ${formatTimeMs(end - start)}`);
-    log("[Analysis] Graph first node", graph.getNodeById("S0"));
-    log("[Analysis] Graph first edge", graph.getEdge('S0'));
   }
 
   async exploreState({ graph, state, depth, maxDepth }) {
@@ -150,15 +157,20 @@ class Analysis {
 
 
   async restoreState(path) {
-    await this.page.reload({ waitUntil: "domcontentloaded" });
-    await this.waitForIdle();
+    await this.goToInitialState();
 
     for (const p of path) {
       const success = await this.findAndClick(p);
       if (!success) { return false; }
     }
 
+    await this.waitForIdle();
     return true;
+  }
+
+  async goToInitialState() {
+    await this.page.goto(this.initialURL, { waitUntil: "domcontentloaded" });
+    await this.waitForIdle();
   }
 
   async findAndClick(data) {
@@ -216,19 +228,18 @@ class Analysis {
     }
   }
 
-  resetTransition(candidate = null) {
+  resetTransition(candidate = {}) {
     this.pendingRequests.clear();
     this.lastActivity = Date.now();
 
-    this.currentTransition = candidate ?
-      {
-        ...candidate,
-        network: {
-          requests: [],
-          responses: [],
-          navigation: []
-        }
-      } : null;
+    this.currentTransition = {
+      ...candidate,
+      network: {
+        requests: [],
+        responses: [],
+        navigation: []
+      }
+    };
   }
 
   isSameState(a, b) {

@@ -18,17 +18,24 @@ const BASE_URL = `http://${process.env.API_HOST}:${process.env.API_PORT}/api`;
 //==============================
 
 export async function apiToggleProxyState(enable) {
-  const url = `${BASE_URL}/${enable ? 'start-proxy' : 'stop-proxy'}`;
-  const options = _getApiOptions({ method: "POST" });
+  const url = `${BASE_URL}/proxy`;
+  const options = _getApiOptions({ method: "PUT", body: { "enable": enable } });
   log("[API] Requested new proxy state: " + enable)
 
   return await _executeApi({ url, options });
 }
 
 export async function apiStartAnalysis() {
-  const url = `${BASE_URL}/start-analysis`;
-  const options = _getApiOptions({ method: "POST" });
+  const url = `${BASE_URL}/analysis`;
+  const options = _getApiOptions({ method: "POST", body: { "status": "start" } });
   log("[API] Requested new analysis")
+
+  return await _executeApi({ url, options });
+}
+
+export async function apiSaveGraph(graph) {
+  const url = `${BASE_URL}/graphs`;
+  const options = _getApiOptions({ method: "POST", body: graph });
 
   return await _executeApi({ url, options });
 }
@@ -64,7 +71,7 @@ function _getApiOptions({
 } = {}) {
   return {
     method,
-    body,
+    body: JSON.stringify(body),
     headers: {
       ...headers,
       ...(token && { Authorization: `Bearer ${token}` }),
