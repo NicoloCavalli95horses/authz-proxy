@@ -44,10 +44,6 @@ export class GraphManager {
     return this.graph.addNode(data);
   }
 
-  setCurrentNodeId(id) {
-    this.currentNodeId = id;
-  }
-
   async getDataFromBrowser() {
     return await this.page.evaluate(() => {
       // Get clickable elements using injected DOM functions
@@ -75,11 +71,20 @@ export class GraphManager {
     }
   }
 
+  // from id, to id, action schema see Graph.js
   addEdge({ from, to, action }) {
     return this.graph.addEdge(from, to, action);
   }
 
   getDOMhash(dom) {
     return crypto.createHash("sha256").update(dom).digest("hex");
+  }
+
+  getNodeById(id) {
+    return this.graph.getNodeById(id);
+  }
+
+  getEdge(id) {
+    return this.graph.getEdge(id);
   }
 }

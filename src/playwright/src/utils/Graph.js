@@ -93,7 +93,7 @@ export class Graph {
     this.edges.push({ from, to, action });
   }
 
-  getEdges(from) {
+  getEdge(from) {
     return this.edges.filter(e => e.from === from);
   }
 

@@ -277,13 +277,7 @@ function extractClickableElements() {
 
       clickable.push({
         type: "click",
-        tag,
-        textContent: el.innerText?.trim().slice(0, 80),
-        id: el.id,
-        classes: el.className,
-        attributes: el.getAttributeNames(),
-        signature: buildElementSignature(el),
-        reasons
+        data: buildElementSignature(el),
       });
     }
 
@@ -384,19 +378,14 @@ function levenshtein(a, b) {
 }
 
 // Return the best match, given the element signature
-function findElementFuzzy(signature, thr = 70) {
-  let candidates = [...document.querySelectorAll(signature.tag)];
-
-  if (signature.parentFingerprint) {
-    // filter candidates
-    candidates = candidates.filter(el => parentSimilarity(el, signature) > 0);
-  }
+function findElementFuzzy(data, thr = 70) {
+  const candidates = [...document.querySelectorAll(data.tag)];
 
   let best = null;
   let bestScore = 0;
 
   for (const el of candidates) {
-    const score = elementScore(el, signature);
+    const score = elementScore(el, data);
     if (score > bestScore) {
       bestScore = score;
       best = el;

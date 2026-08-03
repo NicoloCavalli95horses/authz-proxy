@@ -2,7 +2,7 @@
 // Import
 //===================
 import { apiStartAnalysis, apiToggleProxyState } from "../utils/api.js";
-import { log } from "../utils/utils.js";
+import { formatTimeMs, log } from "../utils/utils.js";
 import { GraphManager } from "./GraphManager.js";
 
 
@@ -29,7 +29,22 @@ class Analysis {
   async init() {
     const requestHandler = (req) => {
       if (!this.currentTransition) { return; }
-      this.currentTransition.network.requests.push({ url: req.url(), method: req.method(), resourceType: req.resourceType() });
+      const requestData = { url: req.url(), headers: req.headers(), method: req.method(), resourceType: req.resourceType() };
+
+      if (["POST", "PUT", "PATCH"].includes(req.method())) {
+        const body = req.postData();
+
+        if (body) {
+          try {
+            requestData.body = JSON.parse(body);
+          } catch {
+            requestData.body = body;
+          }
+        }
+      }
+
+      this.currentTransition.network.requests.push(requestData);
+
       this.pendingRequests.add(req);
       this.lastActivity = Date.now();
     };
@@ -64,12 +79,18 @@ class Analysis {
   }
 
   async startAnalysis() {
+    const start = performance.now();
+
     const graph = new GraphManager(this.page);
     const S0 = await graph.addNode();
 
     log("[Analysis] exploring page:", S0.url);
     await this.exploreState({ graph, state: S0, depth: 0, maxDepth: 1 });
-    log("[Analysis] exploration done");
+
+    const end = performance.now();
+    log(`[Analysis] Exploration done in: ${formatTimeMs(end - start)}`);
+    log("[Analysis] Graph first node", graph.getNodeById("S0"));
+    log("[Analysis] Graph first edge", graph.getEdge('S0'));
   }
 
   async exploreState({ graph, state, depth, maxDepth }) {
@@ -83,17 +104,23 @@ class Analysis {
 
     state.visiting = true;
 
-    for (const [idx, el] of state.dom.clickableEls.entries()) {
-      log(`[Analysis][${state.id}] Evaluating element ${idx + 1}/${state.dom.clickableEls.length}`, el.selector);
+    for (const [idx, candidate] of state.dom.clickableEls.entries()) {
+      log(`[Analysis][${state.id}] Evaluating element ${idx + 1}/${state.dom.clickableEls.length}`, candidate.data);
 
-      const result = await this.evaluateTransition(el);
+      const result = await this.evaluateTransition(candidate);
+
+      if (!result) {
+        log("[Analysis] Skipping invalid transition", candidate.data);
+        continue;
+      }
+
       const after = await graph.captureState();
       const isDOMchanged = !this.isSameState(state, after);
 
       let nextState;
 
       if (isDOMchanged) {
-        nextState = await graph.addNode({ ...after, parent: state.id, path: [...state.path, el.signature] });
+        nextState = await graph.addNode({ ...after, parent: state.id, path: [...state.path, candidate.data] });
       } else {
         nextState = state;
       }
@@ -126,21 +153,19 @@ class Analysis {
     await this.page.reload({ waitUntil: "domcontentloaded" });
     await this.waitForIdle();
 
-    for (const signature of path) {
-      const success = await this.findAndClick(signature);
-      if (!success) {
-        return false;
-      }
+    for (const p of path) {
+      const success = await this.findAndClick(p);
+      if (!success) { return false; }
     }
 
     return true;
   }
 
-  async findAndClick(signature) {
-    const element = await this.findDOMElement(signature);
+  async findAndClick(data) {
+    const element = await this.findDOMElement(data);
 
     if (!element) {
-      log("[Analysis] Cannot find element", signature);
+      log("[Analysis] Cannot find element", data);
       return false;
     }
 
@@ -148,7 +173,7 @@ class Analysis {
       await element.waitForElementState("visible", { timeout: 1000 });
       await element.click();
     } catch (err) {
-      log("[Analysis] Element not clickable", signature, err);
+      log("[Analysis] Element not clickable", data, err);
       return false;
     }
 
@@ -157,21 +182,21 @@ class Analysis {
   }
 
 
-  async findDOMElement(signature) {
-    const handle = await this.page.evaluateHandle( (signature) => {
-      return window.__instrumentation__.DOMutils.findElementFuzzy(signature);
-    }, signature);
+  async findDOMElement(data) {
+    const handle = await this.page.evaluateHandle((data) => {
+      return window.__instrumentation__.DOMutils.findElementFuzzy(data);
+    }, data);
 
     const element = handle.asElement();
     return element;
   }
 
-  async evaluateTransition(el) {
-    this.resetTransition(el);
+  async evaluateTransition(candidate) {
+    this.resetTransition(candidate);
 
     try {
-      const clicked = await this.findAndClick(el.signature);
-      if (!clicked) { return; }
+      const success = await this.findAndClick(candidate.data);
+      if (!success) { return; }
 
       return {
         ...this.currentTransition,
@@ -191,13 +216,13 @@ class Analysis {
     }
   }
 
-  resetTransition(el = null) {
+  resetTransition(candidate = null) {
     this.pendingRequests.clear();
     this.lastActivity = Date.now();
 
-    this.currentTransition = el ?
+    this.currentTransition = candidate ?
       {
-        ...el,
+        ...candidate,
         network: {
           requests: [],
           responses: [],
