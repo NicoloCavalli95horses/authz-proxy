@@ -6,10 +6,15 @@
 import { chromium } from "playwright";
 import { PageMonitor } from "./src/modules/PageMonitor.js";
 import { log } from "./src/utils/utils.js";
-import { injectHook } from "./src/utils/injectHook.js";
 import { StateManager } from "./src/modules/StateManager.js";
 import 'dotenv/config';
+import fs from "fs";
 
+
+// ===========
+// Const
+// ===========
+const injectable = fs.readFileSync("./dist/injectable.min.js", "utf8");
 
 // ===========
 // Main
@@ -34,7 +39,7 @@ async function bootstrap() {
   const monitor = new PageMonitor(stateManager);
 
   // Hook for all documents
-  await context.addInitScript(injectHook);
+  await context.addInitScript(injectable);
 
   // New tab/popup
   context.on("page", async (page) => {

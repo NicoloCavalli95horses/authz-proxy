@@ -1,5 +1,5 @@
 // Utils.js
-// This file contains general utility functions and classes
+// This file contains general utility functions and classes to be imported in the Node context
 
 // ===========
 // Import
@@ -15,6 +15,6 @@ export function log(...args) {
   console.log(`\n[${t}][PLAYWRIGHT]`, ...args);
 }
 
-export async function sleep (time) {
+export async function sleep(time) {
   return new Promise((resolve) => setTimeout(resolve, time));
 }

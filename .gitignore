@@ -14,4 +14,10 @@ node_modules/
 .env
 playwright/screenshots/reference/*
 playwright/screenshots/target/*
+
+src/playwright/dist/*
+src/playwright/node_modules/*
+src/playwright/package-lock.json
+package-lock.json
+
 output/*

@@ -5,7 +5,6 @@
 // ===========
 // Import
 // ===========
-import { injectHook } from "../utils/injectHook.js";
 import { log } from "../utils/utils.js";
 
 
@@ -37,6 +36,19 @@ export class PageMonitor {
       this.pages.delete(page);
     });
 
+    page.on("framenavigated", async (frame) => {
+      if (page.isClosed()) { return; }
+
+      try {
+        if (frame === page.mainFrame()) {
+          log("[PageMonitor] Navigation:", frame.url());
+        }
+
+      } catch (err) {
+        log("[PageMonitor] Navigation handler failed:", err.message);
+      }
+    });
+
     try {
       if (page.__monitorAttached) { return; }
       page.__monitorAttached = true;
@@ -53,39 +65,6 @@ export class PageMonitor {
     } catch (err) {
       log("[PageMonitor] Expose failed:", err.message);
       return;
-    }
-
-    this.attachOnFrameNavigated(page);
-    await this.safeEvaluate(page, injectHook);
-  }
-
-  attachOnFrameNavigated(page) {
-    page.on("framenavigated", async (frame) => {
-      if (page.isClosed()) { return; }
-
-      try {
-        if (frame === page.mainFrame()) {
-          log("[PageMonitor] Navigation:", frame.url());
-          await this.safeEvaluate(page, injectHook);
-        }
-
-      } catch (err) {
-        log("[PageMonitor] Navigation handler failed:", err.message);
-      }
-    });
-  }
-
-  async safeEvaluate(page, fn) {
-    if (!page || page.isClosed()) {
-      return false;
-    }
-
-    try {
-      await page.evaluate(fn);
-      return true;
-    } catch (err) {
-      log("[PageMonitor] Page unavailable:", err.message);
-      return false;
     }
   }
 }

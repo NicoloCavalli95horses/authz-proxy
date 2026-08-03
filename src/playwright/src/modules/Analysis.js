@@ -3,7 +3,6 @@
 //===================
 import { apiStartAnalysis, apiToggleProxyState } from "../utils/api.js";
 import { log } from "../utils/utils.js";
-import { findClickableDOMEl } from "../utils/findClickableElements.js";
 import { GraphManager } from "./GraphManager.js";
 
 
@@ -21,7 +20,7 @@ class Analysis {
   constructor(page, eventBus) {
     this.page = page;
     this.eventBus = eventBus;
-    this.unsubscribed = undefined;
+    this.unsubscribe = undefined;
     this.currentTransition = {};
     this.pendingRequests = new Set();
     this.lastActivity = Date.now();
@@ -29,14 +28,14 @@ class Analysis {
 
   async init() {
     const requestHandler = (req) => {
-      if (!this.currentTransition.selector) { return; }
+      if (!this.currentTransition) { return; }
       this.currentTransition.network.requests.push({ url: req.url(), method: req.method(), resourceType: req.resourceType() });
       this.pendingRequests.add(req);
       this.lastActivity = Date.now();
     };
 
     const responseHandler = (res) => {
-      if (!this.currentTransition.selector) { return; }
+      if (!this.currentTransition) { return; }
       this.currentTransition.network.responses.push({ url: res.url(), status: res.status() });
       this.pendingRequests.delete(res.request());
       this.lastActivity = Date.now();
@@ -57,7 +56,7 @@ class Analysis {
   }
 
   handleEvent(event) {
-    if (event.type === "NAVIGATION_ATTEMPT" && this.currentTransition.selector) {
+    if (event.type === "NAVIGATION_ATTEMPT" && this.currentTransition) {
       log('[Analysis]', event);
       this.currentTransition.network.navigation.push(event);
       this.lastActivity = Date.now();
@@ -87,26 +86,35 @@ class Analysis {
     for (const [idx, el] of state.dom.clickableEls.entries()) {
       log(`[Analysis][${state.id}] Evaluating element ${idx + 1}/${state.dom.clickableEls.length}`, el.selector);
 
-      await this.restoreState(state);
-      log("[Analysis] Restored state", state.path);
-
       const result = await this.evaluateTransition(el);
       const after = await graph.captureState();
+      const isDOMchanged = !this.isSameState(state, after);
 
       let nextState;
 
-      if (this.isSameState(state, after)) {
-        nextState = state;
+      if (isDOMchanged) {
+        nextState = await graph.addNode({ ...after, parent: state.id, path: [...state.path, el.signature] });
       } else {
-        nextState = await graph.addNode({
-          ...after,
-          parent: state.id,
-          path: [...state.path, el.selector]
-        });
+        nextState = state;
       }
 
       graph.addEdge({ from: state.id, to: nextState.id, action: result });
-      await this.exploreState({ graph, state: nextState, depth: depth + 1, maxDepth });
+
+      if (!nextState.explored) {
+        await this.exploreState({ graph, state: nextState, depth: depth + 1, maxDepth });
+      }
+
+      if (isDOMchanged) {
+        // [Backtracking] Refresh page only if DOM changed, to make sure the next click starts from the same 'checkpoint'
+        const restored = await this.restoreState(state.path);
+
+        if (restored) {
+          log("[Analysis] Restored state", state.path);
+        } else {
+          log("[Analysis] Cannot restore state, stopping branch");
+          break;
+        }
+      }
     }
 
     state.visiting = false;
@@ -114,33 +122,56 @@ class Analysis {
   }
 
 
-  async restoreState(state) {
+  async restoreState(path) {
     await this.page.reload({ waitUntil: "domcontentloaded" });
     await this.waitForIdle();
 
-    for (const selector of state.path) {
-      await this.page.locator(selector).click();
-      await this.waitForIdle();
+    for (const signature of path) {
+      const success = await this.findAndClick(signature);
+      if (!success) {
+        return false;
+      }
     }
+
+    return true;
+  }
+
+  async findAndClick(signature) {
+    const element = await this.findDOMElement(signature);
+
+    if (!element) {
+      log("[Analysis] Cannot find element", signature);
+      return false;
+    }
+
+    try {
+      await element.waitForElementState("visible", { timeout: 1000 });
+      await element.click();
+    } catch (err) {
+      log("[Analysis] Element not clickable", signature, err);
+      return false;
+    }
+
+    await this.waitForIdle();
+    return true;
+  }
+
+
+  async findDOMElement(signature) {
+    const handle = await this.page.evaluateHandle( (signature) => {
+      return window.__instrumentation__.DOMutils.findElementFuzzy(signature);
+    }, signature);
+
+    const element = handle.asElement();
+    return element;
   }
 
   async evaluateTransition(el) {
     this.resetTransition(el);
 
     try {
-      const locator = this.page.locator(el.selector);
-      const count = await locator.count();
-      
-      if (count === 1) {
-        await locator.waitFor({ state: "visible", timeout: 1000 });
-        await locator.click();
-        log('[Analysis] successfully clicked on:', el.selector);
-      } else {
-        log('[Analysis] ERROR, multiple DOM elements match the same selector', el.selector);
-      }
-      
-
-      await this.waitForIdle();
+      const clicked = await this.findAndClick(el.signature);
+      if (!clicked) { return; }
 
       return {
         ...this.currentTransition,
@@ -160,24 +191,26 @@ class Analysis {
     }
   }
 
-  resetTransition(el = {}) {
-    this.currentTransition = {
-      ...el,
-      network: {
-        requests: [],
-        responses: [],
-        navigation: [],
-      }
-    };
+  resetTransition(el = null) {
     this.pendingRequests.clear();
     this.lastActivity = Date.now();
+
+    this.currentTransition = el ?
+      {
+        ...el,
+        network: {
+          requests: [],
+          responses: [],
+          navigation: []
+        }
+      } : null;
   }
 
   isSameState(a, b) {
     return (a.dom.hash === b.dom.hash && a.url === b.url);
   }
 
-  async waitForIdle(timeout = 3000, quietPeriod = 300) {
+  async waitForIdle(timeout = 3000, quietPeriod = 500) {
     const start = Date.now();
     while (Date.now() - start < timeout) {
       const noPendingRequests = this.pendingRequests.size === 0;
@@ -208,8 +241,4 @@ class Analysis {
 //   await apiToggleProxyState(false);
 //   await apiStartAnalysis();
 //   log("Replay done");
-
-//   await page.evaluate((state) => {
-//     window._resetBtnState?.(state);
-//   }, "idle");
 // }

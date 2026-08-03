@@ -45,6 +45,18 @@ CHROME_PID=$!
 
 sleep 3
 
+# Build injectable bundle
+(
+  cd "$DIR/src/playwright"
+  npx esbuild src/injectable/index.js \
+    --bundle \
+    --format=iife \
+    --platform=browser \
+    --minify \
+    --sourcemap \
+    --outfile=dist/injectable.min.js
+) || exit 1
+
 # Start Playwright
 (
   cd "$DIR/src/playwright"
