@@ -6,6 +6,7 @@
 // ===========
 import { injectButton } from "./button.js";
 import { injectDOMfn } from "./DOM.js";
+import { injectHTMLmarker } from "./HTMLmarker.js";
 import { injectNavigationGuard } from "./navigationGuard.js";
 
 
@@ -32,6 +33,9 @@ function onDOMReady(fn) {
 
   // Install DOM manipulation functions
   injectDOMfn();
+
+  // Install HTML marker
+  injectHTMLmarker();
 
   // Install command button
   onDOMReady(() => {

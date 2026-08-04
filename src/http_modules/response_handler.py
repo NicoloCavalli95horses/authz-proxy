@@ -4,8 +4,9 @@
 import json
 import os
 from .utils.json_walker import JsonWalker 
-from .strategies.key_mutation import KeyMutationStrategy
-from .strategies.value_mutation import ValueMutationStrategy
+from .strategies.json.key_mutation import KeyMutationStrategy
+from .strategies.json.value_mutation import ValueMutationStrategy
+from .strategies.html.html_mutation import HTMLMutationStrategy
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -23,7 +24,6 @@ class ResponseHandler:
       # ValueMutationStrategy(),
     ]
     
-
   def analyze(self, flow):
     # Prevent browser from caching data in any case
     flow.response.headers["cache-control"] = "no-store, no-cache, must-revalidate"
@@ -49,8 +49,8 @@ class ResponseHandler:
       
     elif "text/html" in content_type:
       print("text/html response")
-      return #todo
-
+      HTMLhandler = HTMLMutationStrategy()
+      flow.response.text = HTMLhandler.mutate(flow.response.text)
 
   def apply_strategies(self, obj, key, context):
     for strategy in self.strategies:
