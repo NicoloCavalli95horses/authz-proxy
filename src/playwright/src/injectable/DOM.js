@@ -17,119 +17,21 @@ export function injectDOMfn() {
 function installDOMfn() {
   return {
     extractClickableElements,
-    findElementFuzzy
   }
 }
 
 
-function getUniqueSelector(el) {
-  const parts = [];
-
-  while (el) {
-    if (el.tagName === "HTML") {
-      parts.unshift("html");
-      break;
-    }
-
-    if (el.tagName === "BODY") {
-      parts.unshift("body");
-      el = el.parentElement;
-      continue;
-    }
-
-    const tag = el.tagName.toLowerCase();
-
-    let selector = tag;
-
-    // Prefer stable attributes
-    const attrs = [];
-
-    if (el.id) {
-      attrs.push(`#${CSS.escape(el.id)}`);
-    }
-
-    for (const attr of el.attributes) {
-      if (
-        attr.name.startsWith("data-") ||
-        attr.name === "name" ||
-        attr.name === "role" ||
-        attr.name === "tabindex"
-      ) {
-        attrs.push(`[${attr.name}="${escapeAttributeValue(attr.value)}"]`);
-      }
-    }
-
-    if (attrs.length > 0) {
-      selector += attrs.join("");
-    }
-
-    // If still ambiguous among siblings, add nth-of-type
-    const parent = el.parentElement;
-
-    if (parent) {
-      const sameType = [...parent.children].filter(child => child.tagName === el.tagName);
-      if (sameType.length > 1) {
-        const index = sameType.indexOf(el) + 1;
-        selector += `:nth-of-type(${index})`;
-      }
-    }
-
-    parts.unshift(selector);
-    const fullSelector = parts.join(" > ");
-
-    if (document.querySelectorAll(fullSelector).length === 1) {
-      return fullSelector;
-    }
-
-    el = el.parentElement;
-  }
-
-  return parts.join(" > ");
-}
-
-function escapeAttributeValue(value) {
-  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-}
-
-function fingerprint(el) {
-  if (!el) return "";
-
-  let fp = el.tagName.toLowerCase();
-
-  if (el.id)
-    fp += `#${el.id}`;
-
-  for (const attr of el.attributes) {
-    if (
-      attr.name.startsWith("data-") ||
-      attr.name === "role" ||
-      attr.name === "name"
-    ) {
-      fp += `[${attr.name}="${attr.value}"]`;
-    }
-  }
-
-  return fp;
-}
-
-function buildElementSignature(el) {
-  const attributes = {};
-
-  for (const attr of el.attributes) {
-    if (attr.name.startsWith("data-") || attr.name === "role" || attr.name === "name") {
-      attributes[attr.name] = attr.value;
-    }
-  }
+function getElData(el) {
+  const id = el.dataset.mitmId;
+  const selector = `[data-mitm-id="${id}"]`;
 
   return {
-    selector: getUniqueSelector(el),
+    selector,
     tag: el.tagName.toLowerCase(),
     text: el.innerText.trim(),
-    siblingIndex: [...el.parentElement.children].filter(e => e.tagName === el.tagName).indexOf(el),
-    parentFingerprint: fingerprint(el.parentElement),
-    attributes
   };
 }
+
 
 function extractClickableElements() {
   // Remove possible existing highlight
@@ -172,7 +74,7 @@ function extractClickableElements() {
   const all = document.querySelectorAll("*");
 
   for (const el of all) {
-    if (!(el instanceof HTMLElement)) { continue; }
+    if (!(el instanceof Element)) { continue; }
     if (el.id === "__playwright_debug") { continue; }
 
     const reasons = [];
@@ -274,129 +176,10 @@ function extractClickableElements() {
     //-------------------------
     if (reasons.length > 0) {
       el.classList.add("_redRect");
-
-      clickable.push({
-        type: "click",
-        data: buildElementSignature(el),
-      });
+      clickable.push({ type: "click", data: getElData(el) });
     }
-
   }
 
   console.log(clickable);
   return clickable;
 }
-
-// Calculate attribute similarity
-function attributeSimilarity(el, signature) {
-  const attrs = signature.attributes;
-
-  let score = 0;
-  let total = Object.keys(attrs).length;
-
-  if (!total)
-    return 0;
-
-  for (const [key, value] of Object.entries(attrs)) {
-    if (el.getAttribute(key) === value)
-      score++;
-  }
-
-  return score / total;
-}
-
-// Calculate parent similarity
-function parentSimilarity(el, signature) {
-  const fp = fingerprint(el.parentElement);
-  return fp === signature.parentFingerprint ? 1 : 0;
-}
-
-// Calcolate score for fuzzy matching
-function elementScore(el, signature) {
-  let score = 0;
-
-  // tag
-  if (el.tagName.toLowerCase() === signature.tag) {
-    score += 30;
-  }
-
-  // text
-  score += textSimilarity(el.innerText ?? "", signature.text ?? "") * 30;
-
-  // attributes
-  score += attributeSimilarity(el, signature) * 20;
-
-  // parent
-  score += parentSimilarity(el, signature) * 10;
-
-  // relative position
-  const index = [...el.parentElement.children].filter(e => e.tagName === el.tagName).indexOf(el);
-
-  if (index === signature.siblingIndex) {
-    score += 10;
-  }
-
-  return score;
-}
-
-
-function textSimilarity(a = "", b = "") {
-  a = a.trim().toLowerCase();
-  b = b.trim().toLowerCase();
-
-  if (!a && !b) {
-    return 1;
-  }
-
-  const distance = levenshtein(a, b);
-  return 1 - distance / Math.max(a.length, b.length);
-}
-
-function levenshtein(a, b) {
-  const matrix = Array.from({ length: b.length + 1 }, () => Array(a.length + 1).fill(0));
-
-  for (let i = 0; i <= b.length; i++)
-    matrix[i][0] = i;
-
-  for (let j = 0; j <= a.length; j++)
-    matrix[0][j] = j;
-
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      matrix[i][j] =
-        b[i - 1] === a[j - 1]
-          ? matrix[i - 1][j - 1]
-          : Math.min(
-            matrix[i - 1][j - 1] + 1,
-            matrix[i][j - 1] + 1,
-            matrix[i - 1][j] + 1
-          );
-    }
-  }
-
-  return matrix[b.length][a.length];
-}
-
-// Return the best match, given the element signature
-function findElementFuzzy(data, thr = 70) {
-  const candidates = [...document.querySelectorAll(data.tag)];
-
-  let best = null;
-  let bestScore = 0;
-
-  for (const el of candidates) {
-    const score = elementScore(el, data);
-    if (score > bestScore) {
-      bestScore = score;
-      best = el;
-    }
-  }
-
-  // Min threashold
-  if (bestScore < thr) {
-    return null;
-  }
-
-  return best;
-}
-

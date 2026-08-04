@@ -31,12 +31,15 @@ class ResponseHandler:
     flow.response.headers["expires"] = "0"
     flow.response.headers["vary"] = "*"
     
-    if not self.state.enabled and not FORCE_PROXY_ACTIVE:
-      return
 
-    content_type = flow.response.headers.get("content-type", "")
+    content_type = flow.response.headers.get("content-type", "").lower()
     
     if "json" in content_type:
+      print("=== Intercepted HTTP response of type: json")
+      
+      if not self.state.enabled and not FORCE_PROXY_ACTIVE:
+        return
+      
       try:
         data = flow.response.json()
 
@@ -48,9 +51,12 @@ class ResponseHandler:
       flow.response.text = json.dumps(data, ensure_ascii=False) # dumps uses escape by default, this prevents char trasformation
       
     elif "text/html" in content_type:
-      print("text/html response")
+      print("=== Intercepted HTTP response of type: text/html")
       HTMLhandler = HTMLMutationStrategy()
       flow.response.text = HTMLhandler.mutate(flow.response.text)
+      
+    else:
+      print("=== Unknown format", content_type)
 
   def apply_strategies(self, obj, key, context):
     for strategy in self.strategies:

@@ -40,7 +40,7 @@ export class GraphManager {
     }
 
     Object.assign(data, overrides);
-    
+
     return this.graph.addNode(data);
   }
 
@@ -52,6 +52,9 @@ export class GraphManager {
       // Get DOM snapshot
       const doc = document.body.cloneNode(true);
       doc.querySelectorAll("script, style, meta, link").forEach(el => el.remove());
+
+      // Remove instrumentation attributes
+      doc.querySelectorAll("[data-mitm-id]").forEach(el => el.removeAttribute("data-mitm-id"));
       const snapshot = doc.outerHTML;
 
       return { snapshot, clickableEls };

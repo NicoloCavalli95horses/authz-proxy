@@ -8,6 +8,7 @@ import { injectButton } from "./button.js";
 import { injectDOMfn } from "./DOM.js";
 import { injectHTMLmarker } from "./HTMLmarker.js";
 import { injectNavigationGuard } from "./navigationGuard.js";
+import { injectClockMocking } from "./clock.js";
 
 
 
@@ -30,6 +31,9 @@ function onDOMReady(fn) {
 
   // Install navigation guards
   injectNavigationGuard();
+
+  // Install clock mocking
+  injectClockMocking();
 
   // Install DOM manipulation functions
   injectDOMfn();

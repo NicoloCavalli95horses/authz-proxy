@@ -2,18 +2,56 @@
 // HTMLmarker.js
 // These functions are injected in the visited webpage
 
+
+// ===========
+// Const
+// =========== 
+const RUNTIME_MARK = Symbol("runtimeMarked"); // symbols are not cloned
+
+
 // ===========
 // Functions
 // ===========
 export function injectHTMLmarker() {
   window.__instrumentation__ ??= {};
 
-  if (!window.__instrumentation__.HTMLmarker) {
-    window.__instrumentation__.HTMLmarker = { counter: 0 };
-
-    initializeCounter(); // make sure counter starts from the highest number found in the DOM
-    installDOMHooks();
+  if (window.__instrumentation__.HTMLmarkerInstalled) {
+    return;
   }
+  window.__instrumentation__.HTMLmarkerInstalled = true;
+  window.__instrumentation__.HTMLmarker = { counter: 0 };
+
+  initializeCounter(); // make sure counter starts from the highest number found in the DOM
+  disableCSSAnimations();
+  installDOMHooks();
+}
+
+function disableCSSAnimations() {
+  const style = document.createElement("style");
+
+  style.textContent = `
+    *,
+    *::before,
+    *::after {
+      animation-duration: 1ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 1ms !important;
+      transition-delay: 0ms !important;
+      scroll-behavior: auto !important;
+    }
+  `;
+
+  const inject = () => {
+    if (document.head) {
+      document.head.appendChild(style);
+    } else if (document.documentElement) {
+      document.documentElement.appendChild(style);
+    } else {
+      document.addEventListener("readystatechange", inject, { once: true });
+    }
+  };
+
+  inject();
 }
 
 
@@ -61,14 +99,30 @@ function installDOMHooks() {
     Object.defineProperty(Element.prototype, "innerHTML", {
       set(value) {
         descriptor.set.call(this, value);
-        markTree(this);
-      },
 
+        for (const child of this.children) {
+          markTree(child);
+        }
+      },
       get() {
         return descriptor.get.call(this);
       }
     });
   }
+
+  // cloneNode
+  const originalCloneNode = Node.prototype.cloneNode;
+  Node.prototype.cloneNode = function (deep) {
+    const clone = originalCloneNode.call(this, deep);
+
+    if (deep) {
+      markTree(clone);
+    } else {
+      markElement(clone);
+    }
+
+    return clone;
+  };
 
   installDOMObserver()
 }
@@ -100,15 +154,22 @@ function installDOMObserver() {
 function markElement(el) {
   if (!(el instanceof Element)) { return; }
 
-  if (!el.dataset.mitmId) {
-    el.dataset.mitmId = String(window.__instrumentation__.HTMLmarker.counter++);
-  }
+  // already processed
+  if (el[RUNTIME_MARK]) { return; }
+
+  el.dataset.mitmId = String(window.__instrumentation__.HTMLmarker.counter++);
+
+  // The following internal property cannot be cloned with cloneNode()
+  // This prevents duplicate attributes on cloned nodes
+  el[RUNTIME_MARK] = true;
 }
 
 function markTree(node) {
   if (!(node instanceof Element)) {
     return;
   }
+
+  markElement(node);
 
   for (const child of node.children) {
     markTree(child);

@@ -174,7 +174,7 @@ class Analysis {
   }
 
   async findAndClick(data) {
-    const element = await this.findDOMElement(data);
+    const element = this.page.locator(data.selector);
 
     if (!element) {
       log("[Analysis] Cannot find element", data);
@@ -182,7 +182,7 @@ class Analysis {
     }
 
     try {
-      await element.waitForElementState("visible", { timeout: 1000 });
+      await element.waitFor("visible", { timeout: 1000 });
       await element.click();
     } catch (err) {
       log("[Analysis] Element not clickable", data, err);
@@ -191,16 +191,6 @@ class Analysis {
 
     await this.waitForIdle();
     return true;
-  }
-
-
-  async findDOMElement(data) {
-    const handle = await this.page.evaluateHandle((data) => {
-      return window.__instrumentation__.DOMutils.findElementFuzzy(data);
-    }, data);
-
-    const element = handle.asElement();
-    return element;
   }
 
   async evaluateTransition(candidate) {
