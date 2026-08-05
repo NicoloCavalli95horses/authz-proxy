@@ -27,16 +27,7 @@ export class GraphManager {
     };
 
     if (overrides.dom === undefined) {
-      const { snapshot, clickableEls } = await this.getDataFromBrowser();
-
-      Object.assign(data, {
-        url: this.page.url(),
-        dom: {
-          snapshot,
-          clickableEls,
-          hash: this.getDOMhash(snapshot)
-        }
-      });
+      Object.assign(data, await this.getState());
     }
 
     Object.assign(data, overrides);
@@ -62,7 +53,7 @@ export class GraphManager {
   }
 
   // used to preview current DOM state without adding it to the graph
-  async captureState() {
+  async getState() {
     const { snapshot, clickableEls } = await this.getDataFromBrowser();
     return {
       url: this.page.url(),
@@ -70,7 +61,7 @@ export class GraphManager {
         snapshot,
         clickableEls,
         hash: this.getDOMhash(snapshot),
-      }
+      },
     }
   }
 

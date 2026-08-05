@@ -5,10 +5,11 @@
 //===================
 // Import
 //===================
-import { StateMachine } from "../utils/StateMachine.js";
-import { startAnalysis } from "./Analysis.js";
 import { log } from "../utils/utils.js";
 import { EventBus } from "../utils/eventBus.js";
+import { StateMachine } from "../utils/StateMachine.js";
+import { startSetup, endSetup } from "./exploration/PreliminaryActions.js";
+import { startExploration } from "./exploration/ExplorationManager.js";
 
 
 //===================
@@ -18,6 +19,11 @@ export class StateManager {
   constructor() {
     this.stateMachine = new StateMachine();
     this.eventBus = new EventBus();
+    this.context = {
+      page: undefined,
+      eventBus: this.eventBus,
+      preliminaryActions: []
+    };
   }
 
   init() {
@@ -26,28 +32,45 @@ export class StateManager {
       onExit: () => { },
     });
 
-    this.stateMachine.addState("analysis", {
-      onEnter: startAnalysis,
+    this.stateMachine.addState("setup", {
+      onEnter: startSetup,
+      onExit: () => {
+        const res = endSetup();
+        log('preliminary', res);
+        this.context.preliminaryActions = res;
+      }
+    });
+
+    this.stateMachine.addState("exploration", {
+      onEnter: startExploration,
       onExit: () => { },
     });
 
     this.stateMachine.setInitialState("idle");
   }
 
+  setPage(page) {
+    this.context.page = page;
+  }
 
-  async handleEvent(page, event) {
+
+  async handleEvent(event) {
     if (event.type === "STATE_CHANGE_REQUEST") {
-      return await this.handleStateChangeRequest(page);
+      return await this.handleStateChangeRequest();
     }
 
     this.eventBus.emit(event);
   }
 
 
-  async handleStateChangeRequest(page) {
+  async handleStateChangeRequest() {
     switch (this.getState()) {
       case "idle":
-        await this.stateMachine.transition("analysis", page, this.eventBus);
+        await this.stateMachine.transition("setup", this.context);
+        break;
+
+      case "setup":
+        await this.stateMachine.transition("exploration", this.context);
         break;
 
       default:

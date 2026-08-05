@@ -32,7 +32,7 @@ export class StateMachine {
     }
 
     this.currentState = name;
-    log(`[StateMachine] Set initial state: ${this.currentState}`);
+    log(`[StateMachine] Set initial state: ${this.currentState.toUpperCase()}`);
   }
 
 
@@ -60,7 +60,7 @@ export class StateMachine {
       }
 
       this.currentState = name;
-      log(`[StateMachine] State update: ${this.currentState}`);
+      log(`[StateMachine] State update: ${this.currentState.toUpperCase()}`);
 
       // [Enter new state]
       // callback 'onEnter' is executed when we transition to the new state

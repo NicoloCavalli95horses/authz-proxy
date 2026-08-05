@@ -23,7 +23,26 @@ export class PageMonitor {
       return;
     }
 
+    try {
+      if (page.__monitorAttached) { return; }
+      page.__monitorAttached = true;
+
+      await page.exposeFunction("_dispatchEvent", (event) => {
+        this.stateManager.handleEvent(event);
+      });
+
+      // To sync the button state
+      await page.exposeFunction("_getState", async () => {
+        return await this.stateManager.getState();
+      });
+
+    } catch (err) {
+      log("[PageMonitor] Expose failed:", err.message);
+      return;
+    }
+
     this.pages.add(page);
+    this.stateManager.setPage(page);
     log("[PageMonitor] Attaching monitor to:", page.url());
 
     page.on("close", () => {
@@ -48,23 +67,5 @@ export class PageMonitor {
         log("[PageMonitor] Navigation handler failed:", err.message);
       }
     });
-
-    try {
-      if (page.__monitorAttached) { return; }
-      page.__monitorAttached = true;
-
-      await page.exposeFunction("_dispatchEvent", (event) => {
-        this.stateManager.handleEvent(page, event);
-      });
-
-      // To sync the button state
-      await page.exposeFunction("_getState", async () => {
-        return await this.stateManager.getState();
-      });
-
-    } catch (err) {
-      log("[PageMonitor] Expose failed:", err.message);
-      return;
-    }
   }
 }

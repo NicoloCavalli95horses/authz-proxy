@@ -37,7 +37,7 @@ async function installButton() {
       bottom: 0px;
       right: 0px;
       width: auto;
-      z-index: 99999;
+      z-index: 2147483647;
       background: #000;
       color: white;
       cursor:pointer;
@@ -85,8 +85,11 @@ function updateBtnLabel(state) {
     case "idle":
       return "Click to start";
 
-    case "analysis":
-      return "Processing page...";
+    case "setup":
+      return "Click to end setup";
+
+    case "exploration":
+      return "Exploring page...";
 
     case "[TODO]":
       return "[TODO]";

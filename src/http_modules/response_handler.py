@@ -31,7 +31,6 @@ class ResponseHandler:
     flow.response.headers["expires"] = "0"
     flow.response.headers["vary"] = "*"
     
-
     content_type = flow.response.headers.get("content-type", "").lower()
     
     if "json" in content_type:
