@@ -35,14 +35,21 @@ export class StateManager {
     this.stateMachine.addState("setup", {
       onEnter: startSetup,
       onExit: () => {
-        const res = endSetup();
-        log('preliminary', res);
-        this.context.preliminaryActions = res;
+        this.context.preliminaryActions = endSetup();
       }
     });
 
     this.stateMachine.addState("exploration", {
       onEnter: startExploration,
+      onExit: async () => {
+        await this.context.page.evaluate(() => {
+          window.__instrumentation__.setButtonState("idle");
+        });
+      },
+    });
+
+    this.stateMachine.addState("replay", {
+      onEnter: () => { },
       onExit: () => { },
     });
 

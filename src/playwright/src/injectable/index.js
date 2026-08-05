@@ -9,6 +9,7 @@ import { injectDOMfn } from "./DOM.js";
 import { injectHTMLmarker } from "./HTMLmarker.js";
 import { injectNavigationGuard } from "./navigationGuard.js";
 import { injectClockMocking } from "./clock.js";
+import { injectScrollGuard } from "./scrollGuard.js";
 
 
 
@@ -37,6 +38,9 @@ function onDOMReady(fn) {
 
   // Install DOM manipulation functions
   injectDOMfn();
+
+  // Install window scroll guard
+  injectScrollGuard();
 
   // Install HTML marker
   injectHTMLmarker();

@@ -6,7 +6,6 @@ import os
 from .utils.json_walker import JsonWalker 
 from .strategies.json.key_mutation import KeyMutationStrategy
 from .strategies.json.value_mutation import ValueMutationStrategy
-from .strategies.html.html_mutation import HTMLMutationStrategy
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -34,7 +33,7 @@ class ResponseHandler:
     content_type = flow.response.headers.get("content-type", "").lower()
     
     if "json" in content_type:
-      print("=== Intercepted HTTP response of type: json")
+      print("=== Intercepted HTTP response of type: JSON ===")
       
       if not self.state.enabled and not FORCE_PROXY_ACTIVE:
         return
@@ -48,11 +47,6 @@ class ResponseHandler:
 
       self.walker.walk(data, self.apply_strategies)
       flow.response.text = json.dumps(data, ensure_ascii=False) # dumps uses escape by default, this prevents char trasformation
-      
-    elif "text/html" in content_type:
-      print("=== Intercepted HTTP response of type: text/html")
-      HTMLhandler = HTMLMutationStrategy()
-      flow.response.text = HTMLhandler.mutate(flow.response.text)
       
     else:
       print("=== Unknown format", content_type)

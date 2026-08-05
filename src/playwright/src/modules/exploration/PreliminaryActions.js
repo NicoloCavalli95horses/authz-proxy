@@ -31,10 +31,10 @@ export class PreliminaryActions extends BaseExploration {
   }
 
   handleClick(event) {
-    this.actions.push(event);
+    this.actions.push(event.data);
   }
 
   closeSetup() {
-    return this.actions.length ? this.actions : undefined;
+    return this.actions;
   }
 }

@@ -32,7 +32,7 @@ export class StateMachine {
     }
 
     this.currentState = name;
-    log(`[StateMachine] Set initial state: ${this.currentState.toUpperCase()}`);
+    log(`[StateMachine] Set initial state: [${this.currentState.toUpperCase()}]`);
   }
 
 
@@ -43,7 +43,7 @@ export class StateMachine {
     }
 
     if (!this.states.has(name)) {
-      throw new Error(`[StateMachine] State '${name}' does not exist`);
+      throw new Error(`[StateMachine] State ['${name.toUpperCase()}'] does not exist`);
     }
 
     this.busy = true;
@@ -60,7 +60,7 @@ export class StateMachine {
       }
 
       this.currentState = name;
-      log(`[StateMachine] State update: ${this.currentState.toUpperCase()}`);
+      log(`[StateMachine] State update: [${this.currentState.toUpperCase()}]`);
 
       // [Enter new state]
       // callback 'onEnter' is executed when we transition to the new state

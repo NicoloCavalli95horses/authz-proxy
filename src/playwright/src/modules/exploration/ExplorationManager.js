@@ -29,33 +29,33 @@ class ExplorationManager extends BaseExploration {
   async startAnalysis() {
     const start = performance.now();
 
-    const graph = new GraphManager(this.page);
+    const graph = new GraphManager(this.page, this.preliminaryActions);
+    this.initialURL = this.page.url();
+
     const S0 = await graph.addNode();
-
-    this.initialURL = S0.url;
-    log("[Analysis] Saved initial page:", S0.url);
-
-    await this.exploreState({ graph, state: S0, depth: 0, maxDepth: 1 });
+    
+    log("[ExplorationManager] Exploration started");
+    await this.deepFirstSearch({ graph, state: S0, depth: 0, maxDepth: 1 });
 
     const end = performance.now();
-    log(`[Analysis] Exploration done in: ${formatTimeMs(end - start)}`);
+    log(`[ExplorationManager] Exploration done in: ${formatTimeMs(end - start)}`);
   }
 
 
 
-  async exploreState({ graph, state, depth, maxDepth }) {
+  async deepFirstSearch({ graph, state, depth, maxDepth }) {
     if (depth >= maxDepth) { return; }
     if (state.explored || state.visiting) { return; }
 
     state.visiting = true;
 
     for (const [idx, candidate] of state.dom.clickableEls.entries()) {
-      log(`[Analysis][${state.id}] Evaluating element ${idx + 1}/${state.dom.clickableEls.length}`, candidate.data);
+      log(`[ExplorationManager][${state.id}] Evaluating element ${idx + 1}/${state.dom.clickableEls.length}`);
 
       const result = await this.evaluateTransition(candidate);
 
       if (!result) {
-        log("[Analysis] Skipping invalid transition", candidate.data);
+        log("[ExplorationManager] Skipping invalid transition", candidate.data);
         continue;
       }
 
@@ -72,19 +72,20 @@ class ExplorationManager extends BaseExploration {
       graph.addEdge({ from: state.id, to: nextState.id, action: result });
 
       if (!nextState.explored) {
-        await this.exploreState({ graph, state: nextState, depth: depth + 1, maxDepth });
+        await this.deepFirstSearch({ graph, state: nextState, depth: depth + 1, maxDepth });
       }
+
+      log(`[ExplorationManager] Finished exploring ${nextState.id}, restoring ${state.id}`);
 
       if (isDOMchanged) {
         // [Backtracking] Refresh page only if DOM changed, to make sure the next click starts from the same 'checkpoint'
-        const restored = await this.restoreState(state.path);
+        const success = await this.executePreliminaryActions();
+        if (!success) { break; }
 
-        if (restored) {
-          log("[Analysis] Restored state", state.path);
-        } else {
-          log("[Analysis] Cannot restore state, stopping branch");
-          break;
-        }
+        log("[ExplorationManager] Executed preliminary action");
+
+        const restored = await this.restoreState(state.path);
+        if (!restored) { break; }
       }
     }
 
@@ -93,18 +94,39 @@ class ExplorationManager extends BaseExploration {
   }
 
 
+  async executePreliminaryActions() {
+    await this.goToInitialState(this.initialURL); // must go to initial URL in any case
+    log("[ExplorationManager] Page refreshed");
 
-  async restoreState(path) {
-    log('preliminary actions:', this.preliminaryActions);
+    if (!this.preliminaryActions.length) { return; }
 
-    await this.goToInitialState(this.initialURL);
-
-    for (const p of [...this.preliminaryActions, ...path]) {
-      const success = await this.findAndClick(p);
-      if (!success) { return false; }
+    for (const action of this.preliminaryActions) {
+      const success = await this.findAndClick(action);
+      if (!success) {
+        log("[ExplorationManager] Error, cannot reproduce preliminary actions");
+        return false;
+      }
     }
 
     await this.waitForIdle();
+    return true;
+  }
+
+
+  async restoreState(path) {
+    log("[ExplorationManager] Restoring path", path);
+
+    for (const element of path) {
+      const success = await this.findAndClick(element);
+
+      if (!success) {
+        log("[ExplorationManager] Cannot restore", element);
+        return false;
+      }
+      await this.waitForIdle();
+    }
+
+    log("[ExplorationManager] State restored", path);
     return true;
   }
 

@@ -12,9 +12,10 @@ import crypto from "node:crypto";
 // Class
 //===================
 export class GraphManager {
-  constructor(page) {
+  constructor(page, ignoreList) {
     this.page = page;
     this.graph = new Graph();
+    this.ignoreEls = ignoreList;
   }
 
   async addNode(overrides = {}) {
@@ -36,9 +37,19 @@ export class GraphManager {
   }
 
   async getDataFromBrowser() {
-    return await this.page.evaluate(() => {
+    return await this.page.evaluate((ignoreList) => {
+      const getValidElements = (currList, ignoreList) => {
+        return currList.filter(currEl => {
+          const ignored = ignoreList.some(ignoreEl => {
+            return window.__instrumentation__.DOMutils.fingerprintScore(ignoreEl, currEl.data) >= 0.95;
+          });
+          return !ignored;
+        });
+      };
+
       // Get clickable elements using injected DOM functions
-      const clickableEls = window.__instrumentation__.DOMutils.extractClickableElements();
+      const allClickable = window.__instrumentation__.DOMutils.extractClickableElements();
+      const clickableEls = getValidElements(allClickable, ignoreList);
 
       // Get DOM snapshot
       const doc = document.body.cloneNode(true);
@@ -49,7 +60,7 @@ export class GraphManager {
       const snapshot = doc.outerHTML;
 
       return { snapshot, clickableEls };
-    });
+    }, this.ignoreEls);
   }
 
   // used to preview current DOM state without adding it to the graph
