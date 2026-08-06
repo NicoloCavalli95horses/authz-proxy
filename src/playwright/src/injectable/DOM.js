@@ -353,19 +353,16 @@ function parentSimilarity(candidateParent, savedParent) {
 }
 
 function fingerprint(el) {
-  if (!el) return "";
+  if (!el) { return ""; }
 
   let fp = el.tagName.toLowerCase();
 
-  if (el.id)
+  if (el.id) {
     fp += `#${el.id}`;
+  }
 
   for (const attr of el.attributes) {
-    if (
-      attr.name.startsWith("data-") ||
-      attr.name === "role" ||
-      attr.name === "name"
-    ) {
+    if (attr.name.startsWith("data-") || attr.name === "role" || attr.name === "name") {
       fp += `[${attr.name}="${attr.value}"]`;
     }
   }

@@ -1,6 +1,7 @@
 //===================
 // Import
 //===================
+import { config } from "../../config.js";
 import { apiStartAnalysis, apiToggleProxyState } from "../../utils/api.js";
 import { formatTimeMs, log } from "../../utils/utils.js";
 import { GraphManager } from "../GraphManager.js";
@@ -28,7 +29,7 @@ export class ExplorationManager extends BaseExploration {
     const S0 = await graph.addNode();
 
     log("[ExplorationManager] Exploration started");
-    await this.deepFirstSearch({ graph, state: S0, depth: 0, maxDepth: 1 });
+    await this.deepFirstSearch({ graph, state: S0, depth: 0, maxDepth: config.maxExplorationDepth });
 
     const end = performance.now();
     log(`[ExplorationManager] Exploration done in: ${formatTimeMs(end - start)}`);
@@ -124,8 +125,6 @@ export class ExplorationManager extends BaseExploration {
 
 
   async restoreState(path) {
-    log('[ExplorationManager] Before restoreState, URL is', this.page.url());
-
     for (const element of path) {
       const success = await this.findAndClick(element);
 
@@ -136,10 +135,12 @@ export class ExplorationManager extends BaseExploration {
       await this.waitForIdle();
     }
 
-    log(`[ExplorationManager] After restoreState, URL should be: ${this.initialURL}, and is: ${this.page.url()}`);
-    log("[ExplorationManager] State restored");
+    if (this.initialURL == this.page.url()){
+      log("[ExplorationManager] State restored correctly");
+      return true
+    }
 
-    return true;
+    return false;
   }
 
 

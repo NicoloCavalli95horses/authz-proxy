@@ -41,7 +41,8 @@ export class BaseExploration {
 
 
 
-  requestHandler(req) {
+  // Use arrow function to preserve the value of `this`, used in `this.page.on("request", this.requestHandler)`
+  requestHandler = (req) => {
     if (!this.currentTransition?.data) { return; }
     const requestData = { url: req.url(), headers: req.headers(), method: req.method(), resourceType: req.resourceType() };
 
@@ -63,14 +64,36 @@ export class BaseExploration {
     this.lastActivity = Date.now();
   };
 
-  responseHandler(res) {
+
+
+  responseHandler = async (res) => {
     if (!this.currentTransition?.data) { return; }
-    this.currentTransition.network.responses.push({ url: res.url(), status: res.status() });
-    this.pendingRequests.delete(res.request());
+
+    const request = res.request();
+
+    // [TO CONSIDER] exclude certain type of response body (?)
+    // if (!["xhr", "fetch"].includes(request.resourceType())) { return; }
+
+    const responseData = {
+      url: res.url(),
+      status: res.status(),
+      body: null
+    };
+
+    try {
+      responseData.body = await res.json();
+    } catch {
+      try {
+        responseData.body = await res.text();
+      } catch { }
+    }
+
+    this.currentTransition.network.responses.push(responseData);
+    this.pendingRequests.delete(request);
     this.lastActivity = Date.now();
   };
 
-  requestFailedHandler(req) {
+  requestFailedHandler = (req) => {
     if (!this.currentTransition?.data) { return; }
     this.pendingRequests.delete(req);
     this.lastActivity = Date.now();
