@@ -12,11 +12,12 @@ import crypto from "node:crypto";
 // Class
 //===================
 export class GraphManager {
-  constructor(page, ignoreList) {
+  constructor(page) {
     this.page = page;
     this.graph = new Graph();
-    this.ignoreEls = ignoreList;
   }
+
+
 
   async addNode(overrides = {}) {
 
@@ -36,36 +37,56 @@ export class GraphManager {
     return this.graph.addNode(data);
   }
 
+
+
+  async safeGetDataFromBrowser(retries = 3) {
+    let lastError;
+
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await this.getDataFromBrowser();
+
+      } catch (error) {
+        lastError = error;
+
+        const retryable =
+          error.message.includes("Execution context was destroyed") ||
+          error.message.includes("Cannot read properties");
+
+        if (!retryable) {
+          throw error;
+        }
+
+        log(`[getDataFromBrowser] Retry ${i + 1}/${retries}`);
+
+        await this.page.waitForLoadState("domcontentloaded").catch(() => { });
+        await this.page.waitForTimeout(500);
+      }
+    }
+
+    throw lastError;
+  }
+
+
+
   async getDataFromBrowser() {
     return await this.page.evaluate((ignoreList) => {
-      const getValidElements = (currList, ignoreList) => {
-        return currList.filter(currEl => {
-          const ignored = ignoreList.some(ignoreEl => {
-            return window.__instrumentation__.DOMutils.fingerprintScore(ignoreEl, currEl.data) >= 0.95;
-          });
-          return !ignored;
-        });
-      };
-
       // Get clickable elements using injected DOM functions
-      const allClickable = window.__instrumentation__.DOMutils.extractClickableElements();
-      const clickableEls = getValidElements(allClickable, ignoreList);
+      const clickableEls = window.__instrumentation__.DOMutils.extractClickableElements();
 
       // Get DOM snapshot
       const doc = document.body.cloneNode(true);
       doc.querySelectorAll("script, style, meta, link").forEach(el => el.remove());
 
-      // Remove instrumentation attributes
-      doc.querySelectorAll("[data-mitm-id]").forEach(el => el.removeAttribute("data-mitm-id"));
       const snapshot = doc.outerHTML;
 
       return { snapshot, clickableEls };
-    }, this.ignoreEls);
+    });
   }
 
   // used to preview current DOM state without adding it to the graph
   async getState() {
-    const { snapshot, clickableEls } = await this.getDataFromBrowser();
+    const { snapshot, clickableEls } = await this.safeGetDataFromBrowser();
     return {
       url: this.page.url(),
       dom: {
@@ -76,18 +97,26 @@ export class GraphManager {
     }
   }
 
+
+
   // from id, to id, action schema see Graph.js
   addEdge({ from, to, action }) {
     return this.graph.addEdge(from, to, action);
   }
 
+
+
   getDOMhash(dom) {
     return crypto.createHash("sha256").update(dom).digest("hex");
   }
 
+
+
   getNodeById(id) {
     return this.graph.getNodeById(id);
   }
+
+
 
   getEdge(id) {
     return this.graph.getEdge(id);

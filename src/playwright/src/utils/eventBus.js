@@ -11,14 +11,16 @@
 export class EventBus {
 
   constructor() {
-    this.listeners = [];
+    this.listeners = new Set();
   }
-
 
   subscribe(callback) {
-    this.listeners.push(callback);
-  }
+    this.listeners.add(callback);
 
+    return () => {
+      this.listeners.delete(callback);
+    };
+  }
 
   emit(event) {
     for (const callback of this.listeners) {

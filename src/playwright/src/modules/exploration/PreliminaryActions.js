@@ -2,23 +2,9 @@
 //===================
 // Import
 //===================
+import { log } from "../../utils/utils.js";
 import { BaseExploration } from "./BaseExploration.js";
 
-
-
-//===================
-// Consts
-//===================
-let setup = undefined;
-
-export async function startSetup(context) {
-  setup = new PreliminaryActions(context);
-  await setup.init();
-}
-
-export function endSetup() {
-  return setup.closeSetup();
-}
 
 
 //===================
@@ -31,10 +17,13 @@ export class PreliminaryActions extends BaseExploration {
   }
 
   handleClick(event) {
+    log(`[PreliminaryActions] Received click event`, event);
     this.actions.push(event.data);
   }
 
   closeSetup() {
+    this.dispose();
+    log(`[PreliminaryActions] Registered ${this.actions.length} preliminary actions`, this.actions);
     return this.actions;
   }
 }

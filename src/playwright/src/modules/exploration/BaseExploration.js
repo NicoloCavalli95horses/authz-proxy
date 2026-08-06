@@ -23,53 +23,57 @@ export class BaseExploration {
     this.pendingRequests = new Set();
     this.lastActivity = Date.now();
     this.unsubscribe = undefined;
+    this.context = context;
   }
 
 
 
   // Listen to network events
   async init() {
-    const requestHandler = (req) => {
-      if (!this.currentTransition.data) { return; }
-      const requestData = { url: req.url(), headers: req.headers(), method: req.method(), resourceType: req.resourceType() };
-
-      if (["POST", "PUT", "PATCH"].includes(req.method())) {
-        const body = req.postData();
-
-        if (body) {
-          try {
-            requestData.body = JSON.parse(body);
-          } catch {
-            requestData.body = body;
-          }
-        }
-      }
-
-      this.currentTransition.network.requests.push(requestData);
-
-      this.pendingRequests.add(req);
-      this.lastActivity = Date.now();
-    };
-
-    const responseHandler = (res) => {
-      if (!this.currentTransition.data) { return; }
-      this.currentTransition.network.responses.push({ url: res.url(), status: res.status() });
-      this.pendingRequests.delete(res.request());
-      this.lastActivity = Date.now();
-    };
-
-    const requestFailedHandler = (req) => {
-      this.pendingRequests.delete(req);
-      this.lastActivity = Date.now();
-    }
-
     // Listen to HTTP events
-    this.page.on("request", requestHandler);
-    this.page.on("response", responseHandler);
-    this.page.on("requestfailed", requestFailedHandler);
+    this.page.on("request", this.requestHandler);
+    this.page.on("response", this.responseHandler);
+    this.page.on("requestfailed", this.requestFailedHandler);
 
     // Listen to page events
     this.unsubscribe = this.eventBus.subscribe(event => this.handleEvent(event));
+  }
+
+
+
+  requestHandler(req) {
+    if (!this.currentTransition?.data) { return; }
+    const requestData = { url: req.url(), headers: req.headers(), method: req.method(), resourceType: req.resourceType() };
+
+    if (["POST", "PUT", "PATCH"].includes(req.method())) {
+      const body = req.postData();
+
+      if (body) {
+        try {
+          requestData.body = JSON.parse(body);
+        } catch {
+          requestData.body = body;
+        }
+      }
+    }
+
+    this.currentTransition.network.requests.push(requestData);
+
+    this.pendingRequests.add(req);
+    this.lastActivity = Date.now();
+  };
+
+  responseHandler(res) {
+    if (!this.currentTransition?.data) { return; }
+    this.currentTransition.network.responses.push({ url: res.url(), status: res.status() });
+    this.pendingRequests.delete(res.request());
+    this.lastActivity = Date.now();
+  };
+
+  requestFailedHandler(req) {
+    if (!this.currentTransition?.data) { return; }
+    this.pendingRequests.delete(req);
+    this.lastActivity = Date.now();
   }
 
 
@@ -90,8 +94,7 @@ export class BaseExploration {
 
 
   handleNavigationAttempt(event) {
-    if (!this.currentTransition) { return; }
-
+    if (!this.currentTransition?.data) { return; }
     this.currentTransition.network.navigation.push(event);
     this.lastActivity = Date.now();
   }
@@ -100,6 +103,19 @@ export class BaseExploration {
 
   // Hook
   handleClick(event) { }
+
+
+
+  dispose() {
+    if (this.unsubscribe) {
+      this.unsubscribe();
+      this.unsubscribe = null;
+    }
+
+    this.page.off("request", this.requestHandler);
+    this.page.off("response", this.responseHandler);
+    this.page.off("requestfailed", this.requestFailedHandler);
+  }
 
 
 
@@ -120,27 +136,42 @@ export class BaseExploration {
 
 
   async waitForDOMStable(timeout = 2000, quietPeriod = 200) {
-    await this.page.evaluate(({ timeout, quietPeriod }) => {
-      return new Promise(resolve => {
-        let quietTimer;
-        const observer = new MutationObserver(() => {
-          clearTimeout(quietTimer);
+    try {
+      await this.page.evaluate(({ timeout, quietPeriod }) => {
+        return new Promise(resolve => {
+          if (!document.body) {
+            resolve();
+            return;
+          }
 
-          quietTimer = setTimeout(() => {
+          let quietTimer;
+
+          const observer = new MutationObserver(() => {
+            clearTimeout(quietTimer);
+
+            quietTimer = setTimeout(() => {
+              observer.disconnect();
+              resolve();
+            }, quietPeriod);
+          });
+
+          observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+
+          setTimeout(() => {
             observer.disconnect();
             resolve();
-          }, quietPeriod);
+          }, timeout);
         });
+      }, { timeout, quietPeriod });
 
-        observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+    } catch (err) {
+      if (err.message.includes("Execution context was destroyed")) {
+        log("[BaseExploration][waitForDOMStable] Navigation detected, skipping");
+        return;
+      }
 
-        // max timeout
-        setTimeout(() => {
-          observer.disconnect();
-          resolve();
-        }, timeout);
-      });
-    }, { timeout, quietPeriod });
+      throw err;
+    }
   }
 
 
@@ -153,12 +184,12 @@ export class BaseExploration {
 
 
   // Reset global variables
-  resetTransition(candidate = {}) {
+  resetTransition(data = {}) {
     this.pendingRequests.clear();
     this.lastActivity = Date.now();
 
     this.currentTransition = {
-      ...candidate,
+      ...data,
       network: {
         requests: [],
         responses: [],
@@ -169,11 +200,11 @@ export class BaseExploration {
 
 
 
-  async evaluateTransition(candidate) {
-    this.resetTransition(candidate);
+  async evaluateTransition(el) {
+    this.resetTransition(el);
 
     try {
-      const success = await this.findAndClick(candidate.data);
+      const success = await this.findAndClick(el.data);
       if (!success) { return; }
 
       return {
@@ -237,7 +268,6 @@ export class BaseExploration {
     while (Date.now() - start < timeout) {
       const handle = await this.page.evaluateHandle((data) => {
         const result = window.__instrumentation__.DOMutils.findElement(data);
-        console.log(result)
         return result.element;
       }, data);
 
@@ -257,7 +287,13 @@ export class BaseExploration {
 
 
   async goToInitialState(url) {
-    await this.page.goto(url, { waitUntil: "domcontentloaded" });
+    try {
+      // networkidle is risky because we may never idle
+      await this.page.goto(url, { waitUntil: "domcontentloaded" });
+    } catch (err) {
+      log("[BaseExploration] Error while going to initial state", err.message);
+    }
+
     await this.waitForDOMStable();
   }
 }

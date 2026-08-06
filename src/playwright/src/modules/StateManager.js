@@ -8,8 +8,8 @@
 import { log } from "../utils/utils.js";
 import { EventBus } from "../utils/eventBus.js";
 import { StateMachine } from "../utils/StateMachine.js";
-import { startSetup, endSetup } from "./exploration/PreliminaryActions.js";
-import { startExploration } from "./exploration/ExplorationManager.js";
+import { PreliminaryActions } from "./exploration/PreliminaryActions.js";
+import { ExplorationManager } from "./exploration/ExplorationManager.js";
 
 
 //===================
@@ -24,7 +24,12 @@ export class StateManager {
       eventBus: this.eventBus,
       preliminaryActions: []
     };
+
+    this.setup = undefined;
+    this.explorator = undefined;
   }
+
+
 
   init() {
     this.stateMachine.addState("idle", {
@@ -33,15 +38,25 @@ export class StateManager {
     });
 
     this.stateMachine.addState("setup", {
-      onEnter: startSetup,
-      onExit: () => {
-        this.context.preliminaryActions = endSetup();
+      onEnter: async (ctx) => {
+        this.setup = new PreliminaryActions(ctx);
+        await this.setup.init();
+      },
+      onExit: (ctx) => {
+        ctx.preliminaryActions = this.setup.closeSetup();
+        this.setup = undefined;
       }
     });
 
     this.stateMachine.addState("exploration", {
-      onEnter: startExploration,
-      onExit: async () => {
+      onEnter: async (ctx) => {
+        this.explorator = new ExplorationManager(ctx);
+        await this.explorator.init();
+        await this.explorator.startAnalysis();
+      },
+      onExit: async (ctx) => {
+        // [TODO] we need to trigger a state change to execute onExit() here
+        await this.explorator.dispose();
         await this.context.page.evaluate(() => {
           window.__instrumentation__.setButtonState("idle");
         });
@@ -56,9 +71,12 @@ export class StateManager {
     this.stateMachine.setInitialState("idle");
   }
 
+
+
   setPage(page) {
     this.context.page = page;
   }
+
 
 
   async handleEvent(event) {
@@ -68,6 +86,7 @@ export class StateManager {
 
     this.eventBus.emit(event);
   }
+
 
 
   async handleStateChangeRequest() {
@@ -80,6 +99,12 @@ export class StateManager {
         await this.stateMachine.transition("exploration", this.context);
         break;
 
+      case "exploration":
+        // [DEBUG] force reset
+        this.context.preliminaryActions = [];
+        await this.stateMachine.transition("idle", this.context);
+        break;
+
       default:
         log(`[StateManager] No transition available from ${this.getState()}`);
         break;
@@ -88,6 +113,7 @@ export class StateManager {
     return this.getState();
   }
 
+  
 
   getState() {
     return this.stateMachine.getState();
