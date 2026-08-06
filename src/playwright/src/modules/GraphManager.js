@@ -74,10 +74,9 @@ export class GraphManager {
       // Get clickable elements using injected DOM functions
       const clickableEls = window.__instrumentation__.DOMutils.extractClickableElements();
 
-      // Get DOM snapshot
+      // DOM snapshot
       const doc = document.body.cloneNode(true);
       doc.querySelectorAll("script, style, meta, link").forEach(el => el.remove());
-
       const snapshot = doc.outerHTML;
 
       return { snapshot, clickableEls };
@@ -92,7 +91,7 @@ export class GraphManager {
       dom: {
         snapshot,
         clickableEls,
-        hash: this.getDOMhash(snapshot),
+        hash: this.getStateHash(clickableEls),
       },
     }
   }
@@ -106,8 +105,11 @@ export class GraphManager {
 
 
 
-  getDOMhash(dom) {
-    return crypto.createHash("sha256").update(dom).digest("hex");
+  // State id is obtained considering the fingerprint of the clickable elements in this state
+  // Two pages must have the same id if they share all the clickable elements
+  getStateHash(els) {
+    const fingerprints = els.map(el => el.fingerprint).sort();
+    return crypto.createHash("sha256").update(JSON.stringify(fingerprints)).digest("hex");
   }
 
 

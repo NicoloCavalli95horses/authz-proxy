@@ -50,6 +50,11 @@ async function installButton() {
       background: #000;
       color: white;
       cursor:pointer;
+      border: none;
+      padding: 2px 4px;
+      font-family: monospace;
+      font-size: 12px;
+      text-trasform: uppercase;
     `;
 
   btn.onclick = async () => {

@@ -63,7 +63,7 @@ function extractClickableElements() {
     "treeitem"
   ]);
 
-  const clickable = [];
+  const candidateEls = [];
   const all = document.querySelectorAll("*");
 
   for (const el of all) {
@@ -155,12 +155,19 @@ function extractClickableElements() {
     //-------------------------
     // Exclude invisible elements
     //-------------------------
-    const r = el.getBoundingClientRect();
-    const cx = r.left + r.width / 2;
-    const cy = r.top + r.height / 2;
+    const rect = el.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
     const top = document.elementFromPoint(cx, cy);
+    el.rect = rect;
 
+    // element is invisible
     if (top !== el && !el.contains(top)) {
+      continue;
+    }
+
+    // element is too small
+    if (rect.width < 8 || rect.height < 8) {
       continue;
     }
 
@@ -169,12 +176,75 @@ function extractClickableElements() {
     //-------------------------
     if (reasons.length > 0) {
       el.classList.add("_redRect");
-      clickable.push({ type: "CLICK", data: getElementData(el) });
+      candidateEls.push({ type: "CLICK", data: getElementData(el), reasons });
+    }
+  }
+  const validEls = pruneClickableEls(candidateEls);
+
+  console.log('[DOM] Clickable elements', validEls);
+  return validEls;
+}
+
+function pruneClickableEls(candidateEls) {
+  const result = [];
+
+  for (const candidate of candidateEls) {
+    let replaced = false;
+
+    for (let i = 0; i < result.length; i++) {
+      const overlapping = iou(candidate.data.rect, result[i].data.rect) > 0.9;
+      if (!overlapping) { continue; }
+
+      if (semanticScore(candidate) > semanticScore(result[i])) {
+        result[i] = candidate;
+      }
+
+      replaced = true;
+      break;
+    }
+
+    if (!replaced) {
+      result.push(candidate);
     }
   }
 
-  console.log('[DOM] Clickable elements', clickable);
-  return clickable;
+  return result;
+}
+
+function semanticScore(el) {
+  let score = 0;
+
+  switch (el.data.tag) {
+    case "button": score += 100; break;
+    case "a": score += 95; break;
+    case "input": score += 90; break;
+    case "select": score += 90; break;
+    case "textarea": score += 90; break;
+    case "summary": score += 85; break;
+    case "label": score += 80; break;
+  }
+
+  if (el.data.role) { score += 40; }
+  if (el.reasons.includes("onclick")) { score += 30; }
+  if (el.reasons.some(r => r.startsWith("input:"))) { score += 20; }
+  if (el.reasons.includes("cursor:pointer")) { score += 10; }
+
+  return score;
+}
+
+
+// intersection over union
+function iou(a, b) {
+  const left = Math.max(a.left, b.left);
+  const top = Math.max(a.top, b.top);
+  const right = Math.min(a.right, b.right);
+  const bottom = Math.min(a.bottom, b.bottom);
+  const w = Math.max(0, right - left);
+  const h = Math.max(0, bottom - top);
+  const intersection = w * h;
+  const union = a.width * a.height + b.width * b.height - intersection;
+
+  return union === 0 ? 0 : intersection / union;
 }
 
 // Used to generate fingerprint
@@ -191,7 +261,9 @@ export function getElementData(el, depth = 2) {
     name: el.getAttribute("name"),
     aria: getAriaAttributes(el),
     parent: depth > 0 ? getElementData(el?.parentElement, depth - 1) : null,
-    siblings: getSiblingInfo(el)
+    siblings: getSiblingInfo(el),
+    fingerprint: fingerprint(el),
+    rect: el.rect || el.getBoundingClientRect(),
   };
 }
 

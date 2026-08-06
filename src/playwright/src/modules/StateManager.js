@@ -55,11 +55,11 @@ export class StateManager {
         await this.explorator.startAnalysis();
       },
       onExit: async (ctx) => {
-        // [TODO] we need to trigger a state change to execute onExit() here
-        await this.explorator.dispose();
-        await this.context.page.evaluate(() => {
-          window.__instrumentation__.setButtonState("idle");
-        });
+        // // [TODO] we need to trigger a state change to execute onExit() here
+        // await this.explorator.dispose();
+        // await this.context.page.evaluate(() => {
+        //   window.__instrumentation__.setButtonState("idle");
+        // });
       },
     });
 

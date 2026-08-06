@@ -33,6 +33,7 @@ export class ExplorationManager extends BaseExploration {
 
     const end = performance.now();
     log(`[ExplorationManager] Exploration done in: ${formatTimeMs(end - start)}`);
+    await this.endAnalysis();
   }
 
 
@@ -56,15 +57,15 @@ export class ExplorationManager extends BaseExploration {
 
       if (isDOMchanged) {
         nextState = await graph.addNode({ ...after, parent: state.id, path: [...state.path, el.data] });
+        log("[ExplorationManager] DOM has changed, saved new state");
       } else {
         nextState = state;
+        log("[ExplorationManager] DOM has NOT changed, skipped state");
       }
 
       graph.addEdge({ from: state.id, to: nextState.id, action: result });
-      log("[ExplorationManager] Added new edge (interaction effects)", result);
 
       if (!nextState.explored) {
-        log("[ExplorationManager] Exploring new discovered state...");
         await this.deepFirstSearch({ graph, state: nextState, depth: depth + 1, maxDepth });
       }
 
@@ -147,6 +148,13 @@ export class ExplorationManager extends BaseExploration {
 
   isSameState(a, b) {
     return (a.dom.hash === b.dom.hash && a.url === b.url);
+  }
+
+  async endAnalysis() {
+    await this.context.page.evaluate(() => {
+      window.__instrumentation__.setButtonState("idle");
+    });
+    await this.dispose();
   }
 }
 
