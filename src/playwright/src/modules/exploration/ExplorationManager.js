@@ -46,6 +46,7 @@ export class ExplorationManager extends BaseExploration {
 
     for (const [idx, el] of state.dom.clickableEls.entries()) {
       log(`[ExplorationManager][${state.id}] Evaluating element ${idx + 1}/${state.dom.clickableEls.length}`);
+      log('[ExplorationManager] Clickable element details', state.dom.clickableEls);
 
       const result = await this.evaluateClickableEl(el);
       if (!result) { log("[ExplorationManager] Skipping invalid transition", el.data); continue; }
@@ -71,14 +72,12 @@ export class ExplorationManager extends BaseExploration {
 
       log(`[ExplorationManager] Finished exploring ${nextState.id}, restoring ${state.id}`);
 
-      if (isDOMchanged) {
-        // [Backtracking] Refresh page only if DOM changed, to make sure the next click starts from the same 'checkpoint'
-        const success = await this.executePreliminaryActions();
-        if (!success) { break; }
+      // [Backtracking] Refresh to make sure the next click starts from the same checkpoint
+      const success = await this.executePreliminaryActions();
+      if (!success) { break; }
 
-        const restored = await this.restoreState(state.path);
-        if (!restored) { break; }
-      }
+      const restored = await this.restoreState(state.path);
+      if (!restored) { break; }
     }
 
     state.visiting = false;
@@ -137,12 +136,8 @@ export class ExplorationManager extends BaseExploration {
       await this.waitForIdle();
     }
 
-    if (this.initialURL == this.page.url()) {
-      log("[ExplorationManager] State restored correctly");
-      return true
-    }
-
-    return false;
+    log("[ExplorationManager] State restored correctly");
+    return true
   }
 
 

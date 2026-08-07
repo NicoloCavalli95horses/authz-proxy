@@ -5,6 +5,7 @@
 // ===========
 // Import
 // ===========
+import { config } from "../config.js";
 import { log } from "../utils/utils.js";
 
 
@@ -44,6 +45,11 @@ export class PageMonitor {
     this.pages.add(page);
     this.stateManager.setPage(page);
     log("[PageMonitor] Attaching monitor to:", page.url());
+
+    if (config.initialPage) {
+      await page.goto(config.initialPage);
+      log("[PageMonitor] Navigated to initial page:", page.url());
+    }
 
     page.on("close", () => {
       log("[PageMonitor] Page closed");
