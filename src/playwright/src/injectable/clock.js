@@ -1,5 +1,4 @@
 // clock.js
-// utilities functions for DOM element retrieval
 // These functions are injected in the visited webpage
 
 // ===========

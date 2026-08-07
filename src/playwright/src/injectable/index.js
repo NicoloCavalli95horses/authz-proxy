@@ -6,10 +6,11 @@
 // ===========
 import { injectButton } from "./button.js";
 import { injectDOMfn } from "./DOM.js";
-import { injectHTMLmarker } from "./HTMLmarker.js";
+import { injectCSS } from "./CSS.js";
 import { injectNavigationGuard } from "./navigationGuard.js";
 import { injectClockMocking } from "./clock.js";
 import { injectScrollGuard } from "./scrollGuard.js";
+import { config } from "../config.js";
 
 
 
@@ -31,10 +32,14 @@ function onDOMReady(fn) {
   window.__instrumentation__ ??= {};
 
   // Install navigation guards
-  injectNavigationGuard();
+  if (config.enableNavigationGuard) {
+    injectNavigationGuard();
+  }
 
   // Install clock mocking
-  injectClockMocking();
+  if (config.enableClockMocking) {
+    injectClockMocking();
+  }
 
   // Install DOM manipulation functions
   injectDOMfn();
@@ -42,8 +47,8 @@ function onDOMReady(fn) {
   // Install window scroll guard
   injectScrollGuard();
 
-  // Install HTML marker
-  injectHTMLmarker();
+  // Install CSS
+  injectCSS();
 
   // Install command button
   onDOMReady(() => {

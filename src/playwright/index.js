@@ -7,6 +7,7 @@ import { chromium } from "playwright";
 import { PageMonitor } from "./src/modules/PageMonitor.js";
 import { log } from "./src/utils/utils.js";
 import { StateManager } from "./src/modules/StateManager.js";
+import { config } from "./src/config.js";
 import 'dotenv/config';
 import fs from "fs";
 
@@ -57,6 +58,9 @@ async function bootstrap() {
 
 // Disable client cache
 async function configurePage(page) {
+  page.setDefaultTimeout(config.maxPageTimeout);
+  page.setDefaultNavigationTimeout(config.maxPageTimeout);
+
   const client = await page.context().newCDPSession(page);
   await client.send("Network.setCacheDisabled", { cacheDisabled: true });
   await client.send("Network.setBypassServiceWorker", { bypass: true });

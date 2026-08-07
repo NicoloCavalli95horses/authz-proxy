@@ -47,7 +47,10 @@ class ResponseHandler:
 
       self.walker.walk(data, self.apply_strategies)
       flow.response.text = json.dumps(data, ensure_ascii=False) # dumps uses escape by default, this prevents char trasformation
-      
+    
+    elif "html" in content_type:
+      print("=== Intercepted HTTP response of type: HTML ===")
+        
     else:
       print("=== Unknown format", content_type)
 

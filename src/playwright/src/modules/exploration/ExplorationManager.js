@@ -89,7 +89,8 @@ export class ExplorationManager extends BaseExploration {
 
   // Check that the DOM element is not among the element involved in the preliminary actions
   async evaluateClickableEl(el) {
-    const isInPreliminary = await this.page.evaluate((obj) => {
+    const isInPreliminary = await this.safePageEvaluate((obj) => {
+      if (!window.__instrumentation__?.DOMutils?.fingerprintScore) { return false; }
       return obj.ignoreList.some(ignoreEl => {
         return window.__instrumentation__.DOMutils.fingerprintScore(ignoreEl, obj.el.data) >= 0.95;
       });
@@ -136,7 +137,7 @@ export class ExplorationManager extends BaseExploration {
       await this.waitForIdle();
     }
 
-    if (this.initialURL == this.page.url()){
+    if (this.initialURL == this.page.url()) {
       log("[ExplorationManager] State restored correctly");
       return true
     }
@@ -151,7 +152,7 @@ export class ExplorationManager extends BaseExploration {
   }
 
   async endAnalysis() {
-    await this.context.page.evaluate(() => {
+    await this.safePageEvaluate(() => {
       window.__instrumentation__.setButtonState("idle");
     });
     await this.dispose();

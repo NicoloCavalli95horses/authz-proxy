@@ -6,14 +6,14 @@
 // ===========
 // Functions
 // ===========
-export function injectHTMLmarker() {
+export function injectCSS() {
   window.__instrumentation__ ??= {};
 
-  if (window.__instrumentation__.HTMLmarkerInstalled) {
+  if (window.__instrumentation__.CSSInstalled) {
     return;
   }
   
-  window.__instrumentation__.HTMLmarkerInstalled = true;
+  window.__instrumentation__.CSSInstalled = true;
   disableCSSAnimations();
 }
 

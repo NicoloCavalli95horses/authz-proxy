@@ -2,6 +2,7 @@
 //===================
 // Import
 //===================
+import { config } from "../../config.js";
 import { log } from "../../utils/utils.js";
 
 
@@ -142,6 +143,24 @@ export class BaseExploration {
 
 
 
+  async safePageEvaluate(fn, args, retries = 3, delay = 300) {
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await this.page.evaluate(fn, args);
+      } catch (err) {
+        log(`[safePageEvaluate] Retry ${i + 1}/${retries}`, err.message);
+
+        if (i < retries - 1) {
+          await this.page.waitForTimeout(delay);
+        }
+      }
+    }
+
+    return null;
+  }
+
+
+
   // Wait for network idle
   async waitForIdle(timeout = 2500, quietPeriod = 400) {
     const start = Date.now();
@@ -270,7 +289,7 @@ export class BaseExploration {
         }
       });
 
-      await element.click();
+      await this.safeClick(element);
       log("[BaseExploration] Clicked on element", data);
 
       await this.waitForIdle();
@@ -279,6 +298,18 @@ export class BaseExploration {
     } catch (err) {
       log("[Analysis] Error, element not clickable", data, err);
       return false;
+    }
+  }
+
+
+
+  async safeClick(element) {
+    const timeout = config.clickTimeout / 2;
+    try {
+      await element.click({ timeout });
+    } catch (err) {
+      log("[BaseExploration] Normal click failed:", err.message);
+      await element.click({ timeout, force: true });
     }
   }
 

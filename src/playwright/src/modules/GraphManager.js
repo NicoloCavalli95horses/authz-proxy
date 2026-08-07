@@ -4,6 +4,7 @@
 //===================
 // Import
 //===================
+import { config } from "../config.js";
 import { Graph } from "../utils/Graph.js";
 import { log } from "../utils/utils.js";
 import crypto from "node:crypto";
@@ -70,9 +71,9 @@ export class GraphManager {
 
 
   async getDataFromBrowser() {
-    return await this.page.evaluate((ignoreList) => {
+    return await this.page.evaluate((ignoreObj) => {
       // Get clickable elements using injected DOM functions
-      const clickableEls = window.__instrumentation__.DOMutils.extractClickableElements();
+      const clickableEls = window.__instrumentation__.DOMutils.extractClickableElements(ignoreObj);
 
       // DOM snapshot
       const doc = document.body.cloneNode(true);
@@ -80,7 +81,7 @@ export class GraphManager {
       const snapshot = doc.outerHTML;
 
       return { snapshot, clickableEls };
-    });
+    }, config.ignoreDOMarea);
   }
 
   // used to preview current DOM state without adding it to the graph

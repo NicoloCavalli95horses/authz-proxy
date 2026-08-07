@@ -89,4 +89,15 @@ export function installNavigationGuard() {
     window._dispatchEvent({ type: "NAVIGATION_ATTEMPT", source: "location.replace", to: url });
     return;
   };
+
+  //-------------------------
+  // window.open
+  //-------------------------
+
+  const original = window.open;
+
+  window.open = (...args) => {
+    window._dispatchEvent({ type: "NAVIGATION_ATTEMPT", source: "window.open", details: args });
+    return null;
+  };
 }
