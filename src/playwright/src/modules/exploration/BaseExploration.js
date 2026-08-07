@@ -41,6 +41,11 @@ export class BaseExploration {
   }
 
 
+  async done() {
+    this.eventBus.emit({ type: "STATE_CHANGE_REQUEST", source: "explorer" });
+  }
+
+
 
   // Use arrow function to preserve the value of `this`, used in `this.page.on("request", this.requestHandler)`
   requestHandler = (req) => {

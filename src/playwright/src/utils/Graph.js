@@ -38,12 +38,20 @@ edge: {
   to: "S1"
   action: {
     type: "click",
-    tag,
-    textContent,
-    id,
-    classes,
-    selector,
-    reasons,
+    data: {
+      tag: el.tagName.toLowerCase(),
+      text: normalizeText(el.innerText || el.textContent),
+      id: getStableId(el),
+      attributes: getUsefulAttributes(el),
+      role: el.getAttribute("role"),
+      type: el.getAttribute("type"),
+      name: el.getAttribute("name"),
+      aria: getAriaAttributes(el),
+      parent: depth > 0 ? getElementData(el?.parentElement, depth - 1) : null,
+      siblings: getSiblingInfo(el),
+      fingerprint: fingerprint(el),
+      rect: el.rect || el.getBoundingClientRect(),
+    }
     network: {
       requests: [],
       responses: []

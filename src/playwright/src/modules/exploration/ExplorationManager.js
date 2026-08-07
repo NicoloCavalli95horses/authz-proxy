@@ -2,7 +2,6 @@
 // Import
 //===================
 import { config } from "../../config.js";
-import { apiStartAnalysis, apiToggleProxyState } from "../../utils/api.js";
 import { formatTimeMs, log } from "../../utils/utils.js";
 import { GraphManager } from "../GraphManager.js";
 import { BaseExploration } from "./BaseExploration.js";
@@ -37,6 +36,13 @@ export class ExplorationManager extends BaseExploration {
   }
 
 
+  
+  async replayExploration() {
+    log("[ExplorationManager] Replying exploration...");
+    return await this.startAnalysis();
+  }
+
+
 
   async deepFirstSearch({ graph, state, depth, maxDepth }) {
     if (depth >= maxDepth) { return; }
@@ -46,7 +52,6 @@ export class ExplorationManager extends BaseExploration {
 
     for (const [idx, el] of state.dom.clickableEls.entries()) {
       log(`[ExplorationManager][${state.id}] Evaluating element ${idx + 1}/${state.dom.clickableEls.length}`);
-      log('[ExplorationManager] Clickable element details', state.dom.clickableEls);
 
       const result = await this.evaluateClickableEl(el);
       if (!result) { log("[ExplorationManager] Skipping invalid transition", el.data); continue; }
@@ -147,28 +152,7 @@ export class ExplorationManager extends BaseExploration {
   }
 
   async endAnalysis() {
-    await this.safePageEvaluate(() => {
-      window.__instrumentation__.setButtonState("idle");
-    });
-    await this.dispose();
+    await this.goToInitialState(this.initialURL);
+    await this.done();
   }
 }
-
-
-// [TODO]
-// export async function startReplay(page) {
-//   await apiToggleProxyState(true);
-
-//   // Go to starting page
-//   log("Reloading page...")
-//   await page.goto(this.storage.initialURL, { waitUntil: "domcontentloaded", timeout: 4000 }).catch(() => null);
-//   await page.waitForTimeout(this.FULL_PAGE_RELOAD_DELAY_MS);
-//   await this.closeSession(page);
-// }
-
-// [TODO]
-// export async function closeSession(page) {
-//   await apiToggleProxyState(false);
-//   await apiStartAnalysis();
-//   log("Replay done");
-// }

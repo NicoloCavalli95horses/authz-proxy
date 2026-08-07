@@ -95,8 +95,8 @@ function updateBtnLabel(state) {
     case "exploration":
       return "Exploring page...";
 
-    case "[TODO]":
-      return "[TODO]";
+    case "replay":
+      return "Replaying...";
 
     default:
       return "Click to start";

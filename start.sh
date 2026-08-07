@@ -4,6 +4,7 @@ set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "$DIR/src/logs"
 
+# read from .env
 if [ -f "$DIR/.env" ]; then
   export $(grep -v '^#' "$DIR/.env" | xargs)
 fi

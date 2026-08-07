@@ -10,6 +10,7 @@ import { EventBus } from "../utils/eventBus.js";
 import { StateMachine } from "../utils/StateMachine.js";
 import { PreliminaryActions } from "./exploration/PreliminaryActions.js";
 import { ExplorationManager } from "./exploration/ExplorationManager.js";
+import { apiToggleProxyState, apiStartAnalysis } from "../utils/api.js";
 
 
 //===================
@@ -54,17 +55,25 @@ export class StateManager {
         await this.explorator.init();
         await this.explorator.startAnalysis();
       },
-      onExit: async (ctx) => {
-        // // [TODO] we need to trigger a state change to execute onExit() here
-        // await this.explorator.dispose();
-        // await this.context.page.evaluate(() => {
-        //   window.__instrumentation__.setButtonState("idle");
-        // });
+      onExit: async () => {
+        await apiToggleProxyState(true);
       },
     });
 
     this.stateMachine.addState("replay", {
-      onEnter: () => { },
+      onEnter: async (ctx) => {
+        await this.explorator.replayExploration();
+      },
+      onExit: async () => {
+        await apiToggleProxyState(false);
+        await this.explorator.dispose();
+      },
+    });
+
+    this.stateMachine.addState("analysis", {
+      onEnter: async () => {
+        await apiStartAnalysis();
+      },
       onExit: () => { },
     });
 
@@ -100,8 +109,14 @@ export class StateManager {
         break;
 
       case "exploration":
-        // [DEBUG] force reset
-        this.context.preliminaryActions = [];
+        await this.stateMachine.transition("replay", this.context);
+        break;
+
+      case "replay":
+        await this.stateMachine.transition("analysis", this.context);
+        break;
+
+      case "analysis":
         await this.stateMachine.transition("idle", this.context);
         break;
 
@@ -113,7 +128,7 @@ export class StateManager {
     return this.getState();
   }
 
-  
+
 
   getState() {
     return this.stateMachine.getState();

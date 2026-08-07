@@ -1,9 +1,13 @@
+# env
+python-dotenv
+
+# proxy server
 mitmproxy
+
+# web server
 fastapi
 uvicorn[standard]
-python-dotenv
-watchdog=6.0.0
-numpy
-scikit-image
-pillow
-beautifulsoup4
+
+# Postgres
+sqlalchemy
+psycopg[binary]

@@ -4,8 +4,8 @@
 import json
 import os
 from .utils.json_walker import JsonWalker 
-from .strategies.json.key_mutation import KeyMutationStrategy
-from .strategies.json.value_mutation import ValueMutationStrategy
+from .strategies.key_mutation import KeyMutationStrategy
+from .strategies.value_mutation import ValueMutationStrategy
 from dotenv import load_dotenv
 
 load_dotenv()
