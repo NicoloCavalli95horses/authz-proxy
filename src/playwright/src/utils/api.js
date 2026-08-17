@@ -25,6 +25,8 @@ export async function apiToggleProxyState(enable) {
   return await _executeApi({ url, options });
 }
 
+
+
 export async function apiStartAnalysis() {
   const url = `${BASE_URL}/analysis`;
   const options = _getApiOptions({ method: "POST", body: { "status": "start" } });
@@ -33,12 +35,17 @@ export async function apiStartAnalysis() {
   return await _executeApi({ url, options });
 }
 
-export async function apiSaveGraph(graph) {
+
+
+export async function apiSaveGraph(data) {
+  data.timestamp = Date.now();
+
   const url = `${BASE_URL}/graphs`;
-  const options = _getApiOptions({ method: "POST", body: graph });
+  const options = _getApiOptions({ method: "POST", body: data });
 
   return await _executeApi({ url, options });
 }
+
 
 
 async function _executeApi({ url, options }) {
@@ -46,7 +53,7 @@ async function _executeApi({ url, options }) {
     const response = await fetch(url, options);
     const data = await response.json();
 
-    if (response.ok && response.status === 200) {
+    if (response.ok && (response.status >= 200 && response.status < 300)) {
       // success
       return data;
     } else {
@@ -61,6 +68,7 @@ async function _executeApi({ url, options }) {
     return null;
   }
 }
+
 
 
 function _getApiOptions({

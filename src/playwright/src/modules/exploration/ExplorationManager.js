@@ -15,6 +15,7 @@ export class ExplorationManager extends BaseExploration {
     super(context);
     this.initialURL = undefined;
     this.preliminaryActions = context.preliminaryActions || [];
+    this.graph = undefined;
   }
 
 
@@ -22,21 +23,20 @@ export class ExplorationManager extends BaseExploration {
   async startAnalysis() {
     const start = performance.now();
 
-    const graph = new GraphManager(this.page);
+    this.graph = new GraphManager(this.page);
     this.initialURL = this.page.url();
 
-    const S0 = await graph.addNode();
+    const S0 = await this.graph.addNode();
 
     log("[ExplorationManager] Exploration started");
-    await this.deepFirstSearch({ graph, state: S0, depth: 0, maxDepth: config.maxExplorationDepth });
+    await this.deepFirstSearch({ graph: this.graph, state: S0, depth: 0, maxDepth: config.maxExplorationDepth });
 
     const end = performance.now();
     log(`[ExplorationManager] Exploration done in: ${formatTimeMs(end - start)}`);
-    await this.endAnalysis();
   }
 
 
-  
+
   async replayExploration() {
     log("[ExplorationManager] Replying exploration...");
     return await this.startAnalysis();
@@ -151,8 +151,10 @@ export class ExplorationManager extends BaseExploration {
     return (a.dom.hash === b.dom.hash && a.url === b.url);
   }
 
-  async endAnalysis() {
+  async endAnalysis({ dispose } = {}) {
     await this.goToInitialState(this.initialURL);
-    await this.done();
+    this.graph = undefined;
+
+    if (dispose) { this.dispose(); }
   }
 }

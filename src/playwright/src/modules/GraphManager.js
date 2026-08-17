@@ -21,7 +21,6 @@ export class GraphManager {
 
 
   async addNode(overrides = {}) {
-
     let data = {
       visiting: false,  // true at the beginning of the exploration and false at the end of the exploration
       explored: false,  // true at the end of the exploration (eg clicked everywhere)
@@ -34,7 +33,6 @@ export class GraphManager {
     }
 
     Object.assign(data, overrides);
-
     return this.graph.addNode(data);
   }
 
@@ -46,20 +44,13 @@ export class GraphManager {
     for (let i = 0; i < retries; i++) {
       try {
         return await this.getDataFromBrowser();
-
       } catch (error) {
         lastError = error;
+        const retryable = error.message.includes("Execution context was destroyed") || error.message.includes("Cannot read properties");
 
-        const retryable =
-          error.message.includes("Execution context was destroyed") ||
-          error.message.includes("Cannot read properties");
-
-        if (!retryable) {
-          throw error;
-        }
+        if (!retryable) { throw error; }
 
         log(`[getDataFromBrowser] Retry ${i + 1}/${retries}`);
-
         await this.page.waitForLoadState("domcontentloaded").catch(() => { });
         await this.page.waitForTimeout(500);
       }
@@ -83,6 +74,8 @@ export class GraphManager {
       return { snapshot, clickableEls };
     }, config.ignoreDOMarea);
   }
+
+
 
   // used to preview current DOM state without adding it to the graph
   async getState() {

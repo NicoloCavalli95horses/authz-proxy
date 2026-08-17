@@ -10,7 +10,7 @@ import { EventBus } from "../utils/eventBus.js";
 import { StateMachine } from "../utils/StateMachine.js";
 import { PreliminaryActions } from "./exploration/PreliminaryActions.js";
 import { ExplorationManager } from "./exploration/ExplorationManager.js";
-import { apiToggleProxyState, apiStartAnalysis } from "../utils/api.js";
+import { apiToggleProxyState, apiStartAnalysis, apiSaveGraph } from "../utils/api.js";
 
 
 //===================
@@ -56,6 +56,8 @@ export class StateManager {
         await this.explorator.startAnalysis();
       },
       onExit: async () => {
+        await apiSaveGraph({ state: "exploration", data: this.explorator.graph });
+        await this.explorator.endAnalysis();
         await apiToggleProxyState(true);
       },
     });
@@ -65,8 +67,9 @@ export class StateManager {
         await this.explorator.replayExploration();
       },
       onExit: async () => {
+        await apiSaveGraph({ state: "replay", data: this.explorator.graph });
+        await this.explorator.endAnalysis({ dispose: true });
         await apiToggleProxyState(false);
-        await this.explorator.dispose();
       },
     });
 
@@ -105,19 +108,10 @@ export class StateManager {
         break;
 
       case "setup":
+        // Executed one after another
         await this.stateMachine.transition("exploration", this.context);
-        break;
-
-      case "exploration":
         await this.stateMachine.transition("replay", this.context);
-        break;
-
-      case "replay":
         await this.stateMachine.transition("analysis", this.context);
-        break;
-
-      case "analysis":
-        await this.stateMachine.transition("idle", this.context);
         break;
 
       default:
