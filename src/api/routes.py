@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from ..db.database import Base
 from ..db.crud import create_run
 from ..db.crud import save_state
+from ..db.crud import save_interaction
 
 # ===========
 # Router
@@ -50,6 +51,20 @@ def create_router(state):
       db.rollback()
       print(f"[API] Failed to save state: {type(e).__name__}: {e}")
       raise HTTPException(status_code=500, detail="Failed to save state")
+    
+    
+  @router.post("/runs/{run_id}/interactions")
+  def create_interaction(run_id: int, payload: dict, db: Session = Depends(Base.get_db)):
+    try:
+      interaction = save_interaction(db, run_id, payload)
+      db.commit()
+      print(f'[API] Saved state: "id": {interaction.id}')
+      return {"status": "ok", "data": {"interaction": interaction.id}}
+      
+    except Exception as e:
+      db.rollback()
+      print(f"[API] Failed to save state: {type(e).__name__}: {e}")
+      raise HTTPException(status_code=500, detail="Failed to save interaction")
 
 
   @router.post("/analysis", status_code=201)

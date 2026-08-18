@@ -18,13 +18,15 @@ export class BaseExploration {
       network: {
         requests: [],
         responses: [],
-        navigation: [] // routes or path modifications (e.g., history.pushState), often handled client-side in SPAs
+        navigations: [] // routes or path modifications (e.g., history.pushState), often handled client-side in SPAs
       }
     };
-    this.pendingRequests = new Set();
+    this.pendingRequests = new Set(); // used to wait for network idle
     this.lastActivity = Date.now();
     this.unsubscribe = undefined;
     this.context = context;
+
+    this.requestIds = new Map(); // used to map HTTP req/res at DB level
   }
 
 
@@ -45,7 +47,15 @@ export class BaseExploration {
   // Use arrow function to preserve the value of `this`, used in `this.page.on("request", this.requestHandler)`
   requestHandler = (req) => {
     if (!this.currentTransition?.data) { return; }
-    const requestData = { url: req.url(), headers: req.headers(), method: req.method(), resourceType: req.resourceType() };
+
+    const id = crypto.randomUUID();
+    const requestData = {
+      id,
+      method: req.method(),
+      url: req.url(),
+      headers: req.headers(),
+      body: null
+    };
 
     if (["POST", "PUT", "PATCH"].includes(req.method())) {
       const body = req.postData();
@@ -60,6 +70,7 @@ export class BaseExploration {
     }
 
     this.currentTransition.network.requests.push(requestData);
+    this.requestIds.set(req, id);
 
     this.pendingRequests.add(req);
     this.lastActivity = Date.now();
@@ -71,22 +82,34 @@ export class BaseExploration {
     if (!this.currentTransition?.data) { return; }
 
     const request = res.request();
+    const requestId = this.requestIds.get(request);
 
-    // [TO CONSIDER] exclude certain type of response body (?)
-    // if (!["xhr", "fetch"].includes(request.resourceType())) { return; }
+    const contentType = (res.headers()["content-type"] || "").split(";")[0].trim().toLowerCase();
+
+    const hasBody =
+      contentType.startsWith("text/") ||
+      contentType === "application/json" ||
+      contentType.endsWith("+json") ||
+      contentType === "application/javascript" ||
+      contentType === "application/xml" ||
+      contentType.endsWith("+xml");
 
     const responseData = {
-      url: res.url(),
+      requestId,
       status: res.status(),
+      url: res.url(),
+      headers: res.headers(),
       body: null
     };
 
-    try {
-      responseData.body = await res.json();
-    } catch {
+
+    if (hasBody) {
       try {
+        // normalize for DB (no JSON)
         responseData.body = await res.text();
-      } catch { }
+      } catch {
+        responseData.body = null;
+      }
     }
 
     this.currentTransition.network.responses.push(responseData);
@@ -119,7 +142,8 @@ export class BaseExploration {
 
   handleNavigationAttempt(event) {
     if (!this.currentTransition?.data) { return; }
-    this.currentTransition.network.navigation.push(event);
+    log('nav event', event)
+    this.currentTransition.network.navigations.push(event);
     this.lastActivity = Date.now();
   }
 
@@ -235,7 +259,7 @@ export class BaseExploration {
       network: {
         requests: [],
         responses: [],
-        navigation: []
+        navigations: []
       }
     };
   }
@@ -255,7 +279,7 @@ export class BaseExploration {
           ...this.currentTransition.network,
           requests: [...this.currentTransition.network.requests],
           responses: [...this.currentTransition.network.responses],
-          navigation: [...this.currentTransition.network.navigation]
+          navigations: [...this.currentTransition.network.navigations]
         }
       };
 

@@ -46,8 +46,7 @@ export async function apiInitRun(data) {
 export async function apiSaveState(runId, node) {
   if (!runId || !node) { throw new Error("Missing runId or state data"); }
 
-  log("[API] Saving GUI state (graph node)");
-  log(runId, node);
+  log("[API] Saving GUI state (graph node)...");
   const url = `${BASE_URL}/runs/${runId}/states`;
   const options = _getApiOptions({ method: "POST", body: node });
 
@@ -57,12 +56,12 @@ export async function apiSaveState(runId, node) {
 
 
 // Save an interaction execution and its effects
-export async function apiSaveInteraction(runId, interaction) {
-  if (!runId || !interaction) { throw new Error("Missing runId or interaction data"); }
+export async function apiSaveInteraction(runId, data) {
+  if (!runId || !data) { throw new Error("Missing runId or interaction data"); }
 
-  log("[API] Saving GUI interaction (graph edge)");
+  log("[API] Saving GUI interaction (graph edge)...");
   const url = `${BASE_URL}/runs/${runId}/interactions`;
-  const options = _getApiOptions({ method: "POST", body: interaction });
+  const options = _getApiOptions({ method: "POST", body: data });
 
   return await _executeApi({ url, options });
 }

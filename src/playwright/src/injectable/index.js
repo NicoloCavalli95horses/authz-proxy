@@ -32,9 +32,7 @@ function onDOMReady(fn) {
   window.__instrumentation__ ??= {};
 
   // Install navigation guards
-  if (config.enableNavigationGuard) {
-    injectNavigationGuard();
-  }
+  injectNavigationGuard();
 
   // Install clock mocking
   if (config.enableClockMocking) {

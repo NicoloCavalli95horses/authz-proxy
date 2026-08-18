@@ -4,6 +4,7 @@
 // ===========
 // Import
 // ===========
+import { config } from "../config";
 
 
 // ===========
@@ -25,11 +26,19 @@ export function installNavigationGuard() {
   //-------------------------
   document.addEventListener("click", e => {
     const link = e.target.closest("a");
+
     if (link && link.href) {
-      window._dispatchEvent({ type: "NAVIGATION_ATTEMPT", from: "anchor", to: link.href });
-      // blocking event propagation prevents the navigation
-      e.preventDefault();
-      e.stopPropagation();
+      window._dispatchEvent({
+        type: "NAVIGATION_ATTEMPT",
+        source: "anchor",
+        from: window.location.href,
+        to: link.href
+      });
+
+      if (config.enableNavigationGuard) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
     }
   }, true);
 
@@ -40,9 +49,22 @@ export function installNavigationGuard() {
     const form = e.target;
     if (!(form instanceof HTMLFormElement)) { return; }
 
-    window._dispatchEvent({ type: "NAVIGATION_ATTEMPT", from: "form", action: form.action, method: form.method || "GET" });
-    e.preventDefault();
-    e.stopPropagation();
+    const submitter = e.submitter;
+    const method = (submitter?.formMethod || form.method || "GET").toUpperCase();
+    const to = submitter?.formAction || form.action || window.location.href;
+
+    window._dispatchEvent({
+      type: "NAVIGATION_ATTEMPT",
+      source: "form",
+      method,
+      from: window.location.href,
+      to,
+    });
+
+    if (config.enableNavigationGuard) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
   }, true);
 
 
@@ -52,8 +74,16 @@ export function installNavigationGuard() {
   const originalSubmit = HTMLFormElement.prototype.submit;
 
   HTMLFormElement.prototype.submit = function () {
-    window._dispatchEvent({ type: "NAVIGATION_ATTEMPT", source: "form.submit", action: this.action, method: this.method });
-    return;
+    window._dispatchEvent({
+      type: "NAVIGATION_ATTEMPT",
+      source: "form.submit",
+      method: (this.method || "GET").toUpperCase(),
+      from: window.location.href,
+      to: this.action || window.location.href
+    });
+
+    if (config.enableNavigationGuard) { return; }
+    return originalSubmit.call(this);
   };
 
   //-------------------------
@@ -63,15 +93,29 @@ export function installNavigationGuard() {
   const originalReplaceState = window.history.replaceState;
 
   window.history.pushState = function (state, title, url) {
-    window._dispatchEvent({ type: "NAVIGATION_ATTEMPT", from: "pushState", to: url });
-    // block the navigation
-    return
+    window._dispatchEvent({
+      type: "NAVIGATION_ATTEMPT",
+      source: "pushState",
+      from: window.location.href,
+      to: url ? new URL(url, window.location.href).href : window.location.href
+    });
+
+    if (config.enableNavigationGuard) { return }
+
+    return originalPushState.call(this, state, title, url);
   };
 
   window.history.replaceState = function (state, title, url) {
-    window._dispatchEvent({ type: "NAVIGATION_ATTEMPT", from: "replaceState", to: url });
-    // block the navigation
-    return
+    window._dispatchEvent({
+      type: "NAVIGATION_ATTEMPT",
+      source: "replaceState",
+      from: window.location.href,
+      to: url ? new URL(url, window.location.href).href : window.location.href
+    });
+
+    if (config.enableNavigationGuard) { return; }
+
+    return originalReplaceState.call(this, state, title, url);
   };
 
   //-------------------------
@@ -81,23 +125,46 @@ export function installNavigationGuard() {
   const originalReplace = Location.prototype.replace;
 
   Location.prototype.assign = function (url) {
-    window._dispatchEvent({ type: "NAVIGATION_ATTEMPT", source: "location.assign", to: url });
-    return;
+    window._dispatchEvent({
+      type: "NAVIGATION_ATTEMPT",
+      source: "location.assign",
+      from: window.location.href,
+      to: new URL(url, window.location.href).href
+    });
+
+    if (config.enableNavigationGuard) { return; }
+
+    return originalAssign.call(this, url);
   };
 
   Location.prototype.replace = function (url) {
-    window._dispatchEvent({ type: "NAVIGATION_ATTEMPT", source: "location.replace", to: url });
-    return;
+    window._dispatchEvent({
+      type: "NAVIGATION_ATTEMPT",
+      source: "location.replace",
+      from: window.location.href,
+      to: new URL(url, window.location.href).href
+    });
+
+    if (config.enableNavigationGuard) { return; }
+
+    return originalReplace.call(this, url);
   };
 
   //-------------------------
   // window.open
   //-------------------------
+  const originalOpen = window.open;
 
-  const original = window.open;
+  window.open = function (...args) {
+    window._dispatchEvent({
+      type: "NAVIGATION_ATTEMPT",
+      source: "window.open",
+      from: window.location.href,
+      to: args[0] ? new URL(args[0], window.location.href).href : null
+    });
 
-  window.open = (...args) => {
-    window._dispatchEvent({ type: "NAVIGATION_ATTEMPT", source: "window.open", details: args });
-    return null;
+    if (config.enableNavigationGuard) { return null; }
+
+    return originalOpen.apply(this, args);
   };
 }

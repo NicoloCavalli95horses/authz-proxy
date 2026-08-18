@@ -269,10 +269,6 @@ class HttpRequest(Base):
     nullable=True,
   )
 
-  timestamp: Mapped[float | None] = mapped_column(
-    nullable=True,
-  )
-
   # Relationships
   interaction_execution: Mapped["InteractionExecution"] = relationship(
     back_populates="requests",
@@ -303,8 +299,8 @@ class Navigation(Base):
     ),
     nullable=False,
   )
-
-  type: Mapped[str] = mapped_column(
+  
+  source: Mapped[str] = mapped_column(
     String(16),
     nullable=False,
   )
@@ -318,8 +314,10 @@ class Navigation(Base):
     Text,
     nullable=True,
   )
-
-  timestamp: Mapped[float | None] = mapped_column(
+  
+  # HTTP method defined in <form> 
+  method: Mapped[str] = mapped_column(
+    String(16),
     nullable=True,
   )
 
@@ -353,6 +351,11 @@ class HttpResponse(Base):
     Integer,
     nullable=False,
   )
+  
+  url: Mapped[str] = mapped_column(
+    Text,
+    nullable=False,
+  )
 
   headers: Mapped[dict] = mapped_column(
     JSONB,
@@ -362,10 +365,6 @@ class HttpResponse(Base):
 
   body: Mapped[str | None] = mapped_column(
     Text,
-    nullable=True,
-  )
-
-  timestamp: Mapped[float | None] = mapped_column(
     nullable=True,
   )
 

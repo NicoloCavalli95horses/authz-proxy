@@ -54,7 +54,8 @@ edge: {
     }
     network: {
       requests: [],
-      responses: []
+      responses: [],
+      navigations: []
     },
   },
 }  

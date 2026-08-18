@@ -2,7 +2,7 @@
 // Import
 //===================
 import { config } from "../../config.js";
-import { apiSaveState } from "../../utils/api.js";
+import { apiSaveInteraction, apiSaveState } from "../../utils/api.js";
 import { formatTimeMs, log } from "../../utils/utils.js";
 import { GraphManager } from "../GraphManager.js";
 import { BaseExploration } from "./BaseExploration.js";
@@ -76,6 +76,13 @@ export class ExplorationManager extends BaseExploration {
       }
 
       graph.addEdge({ from: state.id, to: nextState.id, action: result });
+
+      await apiSaveInteraction(this.db[this.currentState].run_id, {
+        fromStateId: state.id,
+        toStateId: nextState.id,
+        interaction: {type: result.type, data: result.data}, // clicked el details
+        network: result.network,
+      });
 
       if (!nextState.explored) {
         await this.deepFirstSearch({ graph, state: nextState, depth: depth + 1, maxDepth });
@@ -161,7 +168,7 @@ export class ExplorationManager extends BaseExploration {
     await this.goToInitialState(this.initialURL);
     this.graph = undefined;
     this.initialURL = undefined;
-    
+
     if (dispose) {
       this.dispose();
       this.preliminaryActions = [];
