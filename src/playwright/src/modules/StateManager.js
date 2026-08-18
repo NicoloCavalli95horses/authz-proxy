@@ -50,7 +50,9 @@ export class StateManager {
 
   async init() {
     this.stateMachine.addState("idle", {
-      onEnter: () => { },
+      onEnter: async () => {
+        await this.updateBtnLabel(this.getState());
+      },
       onExit: async () => {
         const d1 = await apiInitRun({ type: "exploration", config });
         this.context.db.exploration = d1.data;
@@ -135,6 +137,7 @@ export class StateManager {
         if (step === "exploration") {
           await this.stateMachine.transition("replay", this.context);
           await this.stateMachine.transition("analysis", this.context);
+          await this.stateMachine.transition("idle", this.context);
         }
         break;
 
@@ -142,6 +145,7 @@ export class StateManager {
         await this.stateMachine.transition("exploration", this.context);
         await this.stateMachine.transition("replay", this.context);
         await this.stateMachine.transition("analysis", this.context);
+        await this.stateMachine.transition("idle", this.context);
         break;
 
       default:
