@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..db.database import Base
 from ..db.crud import create_run
+from ..db.crud import save_state
 
 # ===========
 # Router
@@ -34,8 +35,22 @@ def create_router(state):
     except Exception as e:
       db.rollback()
       print(f"[API] Failed to create run: {type(e).__name__}: {e}")
-      raise HTTPException(status_code=500, detail="Failed to store data")
-  
+      raise HTTPException(status_code=500, detail="Failed to create run")
+    
+    
+  @router.post("/runs/{run_id}/states")
+  def create_state(run_id: int, payload: dict, db: Session = Depends(Base.get_db)):
+    try:
+      state = save_state(db, run_id, payload)
+      db.commit()
+      print(f'[API] Saved state: "id": {state.id}, "state_id": {state.state_id}')
+      return {"status": "ok", "data": {"id": state.id,"state_id": state.state_id}}
+      
+    except Exception as e:
+      db.rollback()
+      print(f"[API] Failed to save state: {type(e).__name__}: {e}")
+      raise HTTPException(status_code=500, detail="Failed to save state")
+
 
   @router.post("/analysis", status_code=201)
   def start_analysis(payload: dict):

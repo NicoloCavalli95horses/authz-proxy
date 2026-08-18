@@ -28,15 +28,16 @@ export class StateManager {
     this.context = {
       page: undefined,
       eventBus: this.eventBus,
-      preliminaryActions: []
-    },
-    this.db = { // data used in db
-      exploration: {},
-      replay: {}
+      preliminaryActions: [],
+      db: { // data used in db
+        exploration: {},
+        replay: {}
+      },
     },
     this.setup = undefined;
     this.explorator = undefined;
   }
+
 
 
   async updateBtnLabel(state) {
@@ -51,8 +52,10 @@ export class StateManager {
     this.stateMachine.addState("idle", {
       onEnter: () => { },
       onExit: async () => {
-        this.db.exploration = await apiInitRun({ type: "exploration", config });
-        this.db.replay = await apiInitRun({ type: "replay", config });
+        const d1 = await apiInitRun({ type: "exploration", config });
+        this.context.db.exploration = d1.data;
+        const d2 = await apiInitRun({ type: "replay", config });
+        this.context.db.replay = d2.data;
       },
     });
 
@@ -78,7 +81,6 @@ export class StateManager {
         await this.explorator.startAnalysis();
       },
       onExit: async () => {
-        // await apiSaveGraph({ status: "exploration", data: this.explorator.graph });
         await this.explorator.endAnalysis();
         await apiToggleProxyState(true);
       },
@@ -90,7 +92,6 @@ export class StateManager {
         await this.explorator.replayExploration();
       },
       onExit: async () => {
-        // await apiSaveGraph({ state: "replay", data: this.explorator.graph });
         await this.explorator.endAnalysis({ dispose: true });
         await apiToggleProxyState(false);
       },
@@ -125,6 +126,7 @@ export class StateManager {
 
 
 
+  // [TODO] to refactor
   async handleStateChangeRequest() {
     switch (this.getState()) {
       case "idle":

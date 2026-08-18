@@ -71,21 +71,25 @@ class DomState(Base):
     nullable=False,
   )
 
+  # node id defined by the client
   state_id: Mapped[str] = mapped_column(
     String(128),
     nullable=False,
   )
 
+  # DOM snapshot (str) 
   snapshot: Mapped[str] = mapped_column(
     Text,
     nullable=False,
   )
 
+  # hash of clickable elements (using their fingerprint)
   hash: Mapped[str] = mapped_column(
     Text,
     nullable=False,
   )
 
+  # of the current page
   url: Mapped[str] = mapped_column(
     Text,
     nullable=False,

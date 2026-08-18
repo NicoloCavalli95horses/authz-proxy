@@ -2,6 +2,7 @@
 // Import
 //===================
 import { config } from "../../config.js";
+import { apiSaveState } from "../../utils/api.js";
 import { formatTimeMs, log } from "../../utils/utils.js";
 import { GraphManager } from "../GraphManager.js";
 import { BaseExploration } from "./BaseExploration.js";
@@ -16,6 +17,8 @@ export class ExplorationManager extends BaseExploration {
     this.initialURL = undefined;
     this.preliminaryActions = context.preliminaryActions || [];
     this.graph = undefined;
+    this.db = context.db;
+    this.currentState = "exploration";
   }
 
 
@@ -27,6 +30,7 @@ export class ExplorationManager extends BaseExploration {
     this.initialURL = this.page.url();
 
     const S0 = await this.graph.addNode();
+    await apiSaveState(this.db[this.currentState].run_id, S0);
 
     log("[ExplorationManager] Exploration started");
     await this.deepFirstSearch({ graph: this.graph, state: S0, depth: 0, maxDepth: config.maxExplorationDepth });
@@ -38,6 +42,7 @@ export class ExplorationManager extends BaseExploration {
 
 
   async replayExploration() {
+    this.currentState = "replay";
     log("[ExplorationManager] Replying exploration...");
     return await this.startAnalysis();
   }
@@ -63,6 +68,7 @@ export class ExplorationManager extends BaseExploration {
 
       if (isDOMchanged) {
         nextState = await graph.addNode({ ...after, parent: state.id, path: [...state.path, el.data] });
+        await apiSaveState(this.db[this.currentState].run_id, nextState);
         log("[ExplorationManager] DOM has changed, saved new state");
       } else {
         nextState = state;
