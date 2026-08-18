@@ -8,7 +8,7 @@
 //===================
 export const config = Object.freeze({
 
-  // Setup initial page
+  // Setup initial page. This may not be exactly the page under test (!)
   // [NOTE] authentication and CAPTCHA solving have to be done manually
   initialPage: "https://example.com/",
 
@@ -26,6 +26,9 @@ export const config = Object.freeze({
       bottom: 0
     }
   },
+
+  // Execute preliminary clicks before exploration (eg. to close cookie banner, wizard, etc)
+  hasPreliminaryAction: true,
 
   // Applied on actions (click, fill, evaluate) and navigation (goto, reload, waitForNavigation)
   maxPageTimeout: 10000,

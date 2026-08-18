@@ -18,7 +18,7 @@ export class BaseExploration {
       network: {
         requests: [],
         responses: [],
-        navigation: []
+        navigation: [] // routes or path modifications (e.g., history.pushState), often handled client-side in SPAs
       }
     };
     this.pendingRequests = new Set();

@@ -28,8 +28,8 @@ export class PageMonitor {
       if (page.__monitorAttached) { return; }
       page.__monitorAttached = true;
 
-      await page.exposeFunction("_dispatchEvent", (event) => {
-        this.stateManager.handleEvent(event);
+      await page.exposeFunction("_dispatchEvent", async (event) => {
+        return await this.stateManager.handleEvent(event);
       });
 
       // To sync the button state

@@ -42,27 +42,24 @@ async function installButton() {
   btn.innerText = updateBtnLabel(state);
 
   btn.style.cssText = `
-      position: fixed;
-      bottom: 0px;
-      right: 0px;
-      width: auto;
-      z-index: 2147483647;
-      background: #000;
-      color: white;
-      cursor:pointer;
-      border: none;
-      padding: 2px 4px;
-      font-family: monospace;
-      font-size: 12px;
-      text-trasform: uppercase;
-    `;
+    position: fixed;
+    bottom: 0px;
+    right: 0px;
+    width: auto;
+    z-index: 2147483647;
+    background: #000;
+    color: white;
+    cursor:pointer;
+    border: none;
+    padding: 2px 4px;
+    font-family: monospace;
+    font-size: 12px;
+    text-trasform: uppercase;
+  `;
 
   btn.onclick = async () => {
     if (typeof window._dispatchEvent === "function") {
       await window._dispatchEvent({ type: "STATE_CHANGE_REQUEST", source: "button" });
-      const state = await window._getState();
-      btn.dataset.state = state;
-      btn.innerText = updateBtnLabel(state);
     }
   };
 
@@ -97,6 +94,9 @@ function updateBtnLabel(state) {
 
     case "replay":
       return "Replaying...";
+
+    case "analysis":
+      return "Processing...";
 
     default:
       return "Click to start";

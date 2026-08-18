@@ -154,7 +154,11 @@ export class ExplorationManager extends BaseExploration {
   async endAnalysis({ dispose } = {}) {
     await this.goToInitialState(this.initialURL);
     this.graph = undefined;
-
-    if (dispose) { this.dispose(); }
+    this.initialURL = undefined;
+    
+    if (dispose) {
+      this.dispose();
+      this.preliminaryActions = [];
+    }
   }
 }

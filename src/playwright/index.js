@@ -36,7 +36,7 @@ async function bootstrap() {
   const browser = await connect();
   const context = browser.contexts()[0];
   const stateManager = new StateManager();
-  stateManager.init();
+  await stateManager.init();
   const monitor = new PageMonitor(stateManager);
 
   // Hook for all documents

@@ -22,9 +22,9 @@ export class EventBus {
     };
   }
 
-  emit(event) {
+  async emit(event) {
     for (const callback of this.listeners) {
-      callback(event);
+      await callback(event);
     }
   }
 }

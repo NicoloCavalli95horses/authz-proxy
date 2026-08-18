@@ -10,7 +10,12 @@ import { EventBus } from "../utils/eventBus.js";
 import { StateMachine } from "../utils/StateMachine.js";
 import { PreliminaryActions } from "./exploration/PreliminaryActions.js";
 import { ExplorationManager } from "./exploration/ExplorationManager.js";
-import { apiToggleProxyState, apiStartAnalysis, apiSaveGraph } from "../utils/api.js";
+import { config } from "../config.js";
+import {
+  apiInitRun,
+  apiStartAnalysis,
+  apiToggleProxyState,
+} from "../utils/api.js";
 
 
 //===================
@@ -24,39 +29,56 @@ export class StateManager {
       page: undefined,
       eventBus: this.eventBus,
       preliminaryActions: []
-    };
-
+    },
+    this.db = { // data used in db
+      exploration: {},
+      replay: {}
+    },
     this.setup = undefined;
     this.explorator = undefined;
   }
 
 
+  async updateBtnLabel(state) {
+    await this.context.page.evaluate((state) => {
+      window.__instrumentation__.setButtonState(state);
+    }, state);
+  }
 
-  init() {
+
+
+  async init() {
     this.stateMachine.addState("idle", {
       onEnter: () => { },
-      onExit: () => { },
+      onExit: async () => {
+        this.db.exploration = await apiInitRun({ type: "exploration", config });
+        this.db.replay = await apiInitRun({ type: "replay", config });
+      },
     });
 
-    this.stateMachine.addState("setup", {
-      onEnter: async (ctx) => {
-        this.setup = new PreliminaryActions(ctx);
-        await this.setup.init();
-      },
-      onExit: (ctx) => {
-        ctx.preliminaryActions = this.setup.closeSetup();
-        this.setup = undefined;
-      }
-    });
+    if (config.hasPreliminaryAction) {
+      this.stateMachine.addState("setup", {
+        onEnter: async (ctx) => {
+          await this.updateBtnLabel(this.getState());
+          this.setup = new PreliminaryActions(ctx);
+          await this.setup.init();
+        },
+        onExit: (ctx) => {
+          ctx.preliminaryActions = this.setup.closeSetup();
+          this.setup = undefined;
+        }
+      });
+    }
 
     this.stateMachine.addState("exploration", {
       onEnter: async (ctx) => {
+        await this.updateBtnLabel(this.getState());
         this.explorator = new ExplorationManager(ctx);
         await this.explorator.init();
         await this.explorator.startAnalysis();
       },
       onExit: async () => {
-        await apiSaveGraph({ state: "exploration", data: this.explorator.graph });
+        // await apiSaveGraph({ status: "exploration", data: this.explorator.graph });
         await this.explorator.endAnalysis();
         await apiToggleProxyState(true);
       },
@@ -64,10 +86,11 @@ export class StateManager {
 
     this.stateMachine.addState("replay", {
       onEnter: async (ctx) => {
+        await this.updateBtnLabel(this.getState());
         await this.explorator.replayExploration();
       },
       onExit: async () => {
-        await apiSaveGraph({ state: "replay", data: this.explorator.graph });
+        // await apiSaveGraph({ state: "replay", data: this.explorator.graph });
         await this.explorator.endAnalysis({ dispose: true });
         await apiToggleProxyState(false);
       },
@@ -75,6 +98,7 @@ export class StateManager {
 
     this.stateMachine.addState("analysis", {
       onEnter: async () => {
+        await this.updateBtnLabel(this.getState());
         await apiStartAnalysis();
       },
       onExit: () => { },
@@ -96,7 +120,7 @@ export class StateManager {
       return await this.handleStateChangeRequest();
     }
 
-    this.eventBus.emit(event);
+    return await this.eventBus.emit(event);
   }
 
 
@@ -104,11 +128,15 @@ export class StateManager {
   async handleStateChangeRequest() {
     switch (this.getState()) {
       case "idle":
-        await this.stateMachine.transition("setup", this.context);
+        const step = config.hasPreliminaryAction ? "setup" : "exploration";
+        await this.stateMachine.transition(step, this.context);
+        if (step === "exploration") {
+          await this.stateMachine.transition("replay", this.context);
+          await this.stateMachine.transition("analysis", this.context);
+        }
         break;
 
       case "setup":
-        // Executed one after another
         await this.stateMachine.transition("exploration", this.context);
         await this.stateMachine.transition("replay", this.context);
         await this.stateMachine.transition("analysis", this.context);
