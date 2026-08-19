@@ -34,7 +34,7 @@ export class StateManager {
         replay: {}
       },
     },
-    this.setup = undefined;
+      this.setup = undefined;
     this.explorator = undefined;
   }
 
@@ -126,34 +126,19 @@ export class StateManager {
     return await this.eventBus.emit(event);
   }
 
+  
 
-
-  // [TODO] to refactor
   async handleStateChangeRequest() {
-    switch (this.getState()) {
-      case "idle":
-        const step = config.hasPreliminaryAction ? "setup" : "exploration";
-        await this.stateMachine.transition(step, this.context);
-        if (step === "exploration") {
-          await this.stateMachine.transition("replay", this.context);
-          await this.stateMachine.transition("analysis", this.context);
-          await this.stateMachine.transition("idle", this.context);
-        }
-        break;
-
-      case "setup":
-        await this.stateMachine.transition("exploration", this.context);
-        await this.stateMachine.transition("replay", this.context);
-        await this.stateMachine.transition("analysis", this.context);
-        await this.stateMachine.transition("idle", this.context);
-        break;
-
-      default:
-        log(`[StateManager] No transition available from ${this.getState()}`);
-        break;
+    const currState = this.getState();
+    if (currState === "idle" && config.hasPreliminaryAction) {
+      await this.stateMachine.transition("setup", this.context);
+      return currState;
     }
 
-    return this.getState();
+    for (const state of ["exploration", "replay", "analysis", "idle"]) {
+      await this.stateMachine.transition(state, this.context);
+    }    
+    return currState; 
   }
 
 
