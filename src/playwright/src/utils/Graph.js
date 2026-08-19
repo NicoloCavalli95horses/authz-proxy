@@ -73,6 +73,8 @@ export class Graph {
     const hash = data.dom?.hash;
 
     if (hash && this.hashes.has(hash)) {
+      // Does not add a new node if the DOM is the same
+      // DOM is the same if clickable elements and all the available texts are the same
       return this.getNodeByHash(hash);
     }
 
@@ -86,7 +88,7 @@ export class Graph {
     return this.getNodeById(id);
   }
 
-  addEdge(from, to, action) {
+  addEdge({from, to, action} = {}) {
     if (!this.nodes.has(from)) {
       throw new Error(`[Graph] Unknown node '${from}'`);
     }

@@ -39,6 +39,7 @@ sleep 2
 google-chrome \
   --remote-debugging-port="$CHROME_DEBUG_PORT" \
   --proxy-server="http://127.0.0.1:$MITM_PORT" \
+  --proxy-bypass-list="<-loopback>" \
   --user-data-dir="$HOME/chrome-mitm-profile" \
   > "$DIR/src/logs/chrome.log" 2>&1 &
 

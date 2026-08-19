@@ -10,7 +10,7 @@ export const config = Object.freeze({
 
   // Setup initial page. This may not be exactly the page under test (!)
   // [NOTE] authentication and CAPTCHA solving have to be done manually
-  initialPage: "https://example.com/",
+  initialPage: "http://localhost:3456/",//"https://example.com/",
 
   // Increases the number of GUI states to explore exponentially
   maxExplorationDepth: 1,

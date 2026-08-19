@@ -1,6 +1,7 @@
 # ===========
 # Import
 # ===========
+import json
 from sqlalchemy.orm import Session
 from .models import Run
 from .models import DomState
@@ -94,12 +95,17 @@ def save_interaction(db: Session, run_id: int, payload: dict) -> InteractionExec
 
 
 def save_http_request(db: Session, execution_id: int,payload: dict) -> HttpRequest:
+  body = payload.get("body")
+
+  if isinstance(body, (dict, list)):
+    body = json.dumps(body)
+        
   request = HttpRequest(
     interaction_execution_id=execution_id,
     method=payload["method"],
     url=payload["url"],
     headers=payload.get("headers", {}),
-    body=payload.get("body", {}),
+    body=body,
   )
 
   db.add(request)
@@ -110,12 +116,17 @@ def save_http_request(db: Session, execution_id: int,payload: dict) -> HttpReque
 
 
 def save_http_response(db: Session, request_id: int, payload: dict) -> HttpResponse:
+  body = payload.get("body", {})
+
+  if isinstance(body, (dict, list)):
+    body = json.dumps(body)
+    
   response = HttpResponse(
     request_id=request_id,
     status_code=payload["status"],
     url=payload["url"],
     headers=payload.get("headers", {}),
-    body=payload.get("body", {}),
+    body=body,
   )
 
   db.add(response)

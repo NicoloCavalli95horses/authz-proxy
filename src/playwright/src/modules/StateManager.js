@@ -83,8 +83,8 @@ export class StateManager {
         await this.explorator.startAnalysis();
       },
       onExit: async () => {
-        await this.explorator.endAnalysis();
         await apiToggleProxyState(true);
+        await this.explorator.endAnalysis();
       },
     });
 

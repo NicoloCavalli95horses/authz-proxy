@@ -12,10 +12,10 @@ import crypto from "node:crypto";
 //===================
 // Class
 //===================
-export class GraphManager {
+export class GraphManager extends Graph {
   constructor(page) {
+    super()
     this.page = page;
-    this.graph = new Graph();
   }
 
 
@@ -33,7 +33,7 @@ export class GraphManager {
     }
 
     Object.assign(data, overrides);
-    return this.graph.addNode(data);
+    return super.addNode(data);
   }
 
 
@@ -71,7 +71,15 @@ export class GraphManager {
       doc.querySelectorAll("script, style, meta, link").forEach(el => el.remove());
       const snapshot = doc.outerHTML;
 
-      return { snapshot, clickableEls };
+      // Textual content
+      const TEXT_SELECTORS = ["h1", "h2", "h3", "p", "label", "button"];
+
+      const innerText = Array.from(doc.querySelectorAll(TEXT_SELECTORS.join(",")))
+        .map(el => el.innerText.replace(/\s+/g, " ").trim())
+        .filter(Boolean)
+        .join(" ");
+
+      return { snapshot, clickableEls, innerText };
     }, config.ignoreDOMarea);
   }
 
@@ -79,42 +87,26 @@ export class GraphManager {
 
   // used to preview current DOM state without adding it to the graph
   async getState() {
-    const { snapshot, clickableEls } = await this.safeGetDataFromBrowser();
+    const { snapshot, clickableEls, innerText } = await this.safeGetDataFromBrowser();
     return {
       url: this.page.url(),
       dom: {
         snapshot,
         clickableEls,
-        hash: this.getStateHash(clickableEls),
+        innerText,
+        hash: this.getStateHash(clickableEls, innerText),
       },
     }
   }
 
 
 
-  // from id, to id, action schema see Graph.js
-  addEdge({ from, to, action }) {
-    return this.graph.addEdge(from, to, action);
-  }
-
-
-
-  // State id is obtained considering the fingerprint of the clickable elements in this state
-  // Two pages must have the same id if they share all the clickable elements
-  getStateHash(els) {
+  // Two pages are considered identical if share these two variables
+  // > the fingerprint of all the available clickable elements (this carries information about parent/sibling DOM nodes)
+  // > all the available textual content
+  getStateHash(els, txt) {
     const fingerprints = els.map(el => el.fingerprint).sort();
-    return crypto.createHash("sha256").update(JSON.stringify(fingerprints)).digest("hex");
-  }
-
-
-
-  getNodeById(id) {
-    return this.graph.getNodeById(id);
-  }
-
-
-
-  getEdge(id) {
-    return this.graph.getEdge(id);
+    const stateRepresentation = { fingerprints, txt };
+    return crypto.createHash("sha256").update(JSON.stringify(stateRepresentation)).digest("hex");
   }
 }

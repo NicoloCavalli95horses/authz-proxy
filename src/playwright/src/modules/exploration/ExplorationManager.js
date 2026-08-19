@@ -42,6 +42,7 @@ export class ExplorationManager extends BaseExploration {
 
 
   async replayExploration() {
+    await this.goToInitialState(this.initialURL);
     this.currentState = "replay";
     log("[ExplorationManager] Replying exploration...");
     return await this.startAnalysis();
@@ -62,18 +63,16 @@ export class ExplorationManager extends BaseExploration {
       if (!result) { log("[ExplorationManager] Skipping invalid transition", el.data); continue; }
 
       const after = await graph.getState();
-      const isDOMchanged = !this.isSameState(state, after);
-
+      const existingState = graph.getNodeByHash(after.dom.hash);
       let nextState;
 
-      if (isDOMchanged) {
+      if (existingState) {
+        nextState = existingState;
+        log(`[ExplorationManager] State already exists: ${existingState.id}`);
+      } else {
         nextState = await graph.addNode({ ...after, parent: state.id, path: [...state.path, el.data] });
         await apiSaveState(this.db[this.currentState].run_id, nextState);
-        log("[ExplorationManager] DOM has changed, saved new state");
-      } else {
-        nextState = state;
-        log("[ExplorationManager] DOM has NOT changed, skipped state");
-      }
+      } 
 
       graph.addEdge({ from: state.id, to: nextState.id, action: result });
 
@@ -159,15 +158,9 @@ export class ExplorationManager extends BaseExploration {
   }
 
 
-
-  isSameState(a, b) {
-    return (a.dom.hash === b.dom.hash && a.url === b.url);
-  }
-
   async endAnalysis({ dispose } = {}) {
     await this.goToInitialState(this.initialURL);
     this.graph = undefined;
-    this.initialURL = undefined;
 
     if (dispose) {
       this.dispose();

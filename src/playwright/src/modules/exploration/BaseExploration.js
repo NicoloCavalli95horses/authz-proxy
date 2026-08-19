@@ -84,6 +84,11 @@ export class BaseExploration {
     const request = res.request();
     const requestId = this.requestIds.get(request);
 
+    if (!requestId) {
+      log("[BaseExploration][NETWORK] Response without tracked request", { url: res.url(), status: res.status(), method: request.method() });
+      return;
+    };
+
     const contentType = (res.headers()["content-type"] || "").split(";")[0].trim().toLowerCase();
 
     const hasBody =
@@ -95,7 +100,7 @@ export class BaseExploration {
       contentType.endsWith("+xml");
 
     const responseData = {
-      requestId,
+      requestId: requestId || null,
       status: res.status(),
       url: res.url(),
       headers: res.headers(),
@@ -142,7 +147,7 @@ export class BaseExploration {
 
   handleNavigationAttempt(event) {
     if (!this.currentTransition?.data) { return; }
-    log('nav event', event)
+
     this.currentTransition.network.navigations.push(event);
     this.lastActivity = Date.now();
   }
