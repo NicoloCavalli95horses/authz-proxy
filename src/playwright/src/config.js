@@ -28,7 +28,7 @@ export const config = Object.freeze({
   },
 
   // Execute preliminary clicks before exploration (eg. to close cookie banner, wizard, etc)
-  hasPreliminaryAction: false,
+  hasPreliminaryAction: true,
 
   // Applied on actions (click, fill, evaluate) and navigation (goto, reload, waitForNavigation)
   maxPageTimeout: 10000,
@@ -41,5 +41,11 @@ export const config = Object.freeze({
 
   // <a href="">, window.open, history.push, assign and replace and other navigation APIs are blocked to speed up the exploration
   enableNavigationGuard: false,
+
+  // Prevent window from scrolling
+  preventScroll: true,
+
+  // Prevent CSS animations
+  preventAnimations: false
 
 });

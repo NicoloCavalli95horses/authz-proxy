@@ -43,10 +43,14 @@ function onDOMReady(fn) {
   injectDOMfn();
 
   // Install window scroll guard
-  injectScrollGuard();
+  if (config.preventScroll) {
+    injectScrollGuard();
+  }
 
   // Install CSS
-  injectCSS();
+  if (config.preventAnimations) {
+    injectCSS();
+  }
 
   // Install command button
   onDOMReady(() => {
