@@ -138,11 +138,6 @@ class Interaction(Base):
     nullable=False,
   )
 
-  source_state_hash: Mapped[str] = mapped_column(
-    String(128),
-    nullable=False,
-  )
-
   element_fingerprint: Mapped[str] = mapped_column(
     String(256),
     nullable=False,
@@ -161,7 +156,6 @@ class Interaction(Base):
   __table_args__ = (
     UniqueConstraint(
       "type",
-      "source_state_hash",
       "element_fingerprint",
       name="uq_logical_interaction",
     ),

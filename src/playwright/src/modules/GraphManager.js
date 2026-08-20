@@ -68,18 +68,18 @@ export class GraphManager extends Graph {
 
       // DOM snapshot
       const doc = document.body.cloneNode(true);
-      doc.querySelectorAll("script, style, meta, link").forEach(el => el.remove());
-      const snapshot = doc.outerHTML;
+      doc.querySelector('#__playwright_debug').remove();
 
-      // Textual content
-      const TEXT_SELECTORS = ["h1", "h2", "h3", "p", "label", "button"];
+      const KEEP_DOM_EL = "h1, h2, h3, p, button, a, input, select, textarea";
+      const KEEP_ATTRIBUTES = ["href", "type", "name", "value", "role", "aria-label", "placeholder"];
+      const elements = doc.querySelectorAll(KEEP_DOM_EL);
 
-      const innerText = Array.from(doc.querySelectorAll(TEXT_SELECTORS.join(",")))
-        .map(el => el.innerText.replace(/\s+/g, " ").trim())
-        .filter(Boolean)
-        .join(" ");
+      const snapshot = [...elements].map(el => {
+        const attrs = [...el.attributes].filter(a => KEEP_ATTRIBUTES.includes(a.name)).map(a => `${a.name}=${a.value}`).sort().join("|");
+        return `${el.tagName}|${attrs}|${el.textContent.replace(/\s+/g, " ").trim()}`;
+      }).join("\n");
 
-      return { snapshot, clickableEls, innerText };
+      return { snapshot, clickableEls };
     }, config.ignoreDOMarea);
   }
 
@@ -87,26 +87,21 @@ export class GraphManager extends Graph {
 
   // used to preview current DOM state without adding it to the graph
   async getState() {
-    const { snapshot, clickableEls, innerText } = await this.safeGetDataFromBrowser();
+    const { snapshot, clickableEls } = await this.safeGetDataFromBrowser();
     return {
       url: this.page.url(),
       dom: {
         snapshot,
         clickableEls,
-        innerText,
-        hash: this.getStateHash(clickableEls, innerText),
+        hash: this.getStateHash(snapshot),
       },
     }
   }
 
 
 
-  // Two pages are considered identical if share these two variables
-  // > the fingerprint of all the available clickable elements (this carries information about parent/sibling DOM nodes)
-  // > all the available textual content
-  getStateHash(els, txt) {
-    const fingerprints = els.map(el => el.fingerprint).sort();
-    const stateRepresentation = { fingerprints, txt };
-    return crypto.createHash("sha256").update(JSON.stringify(stateRepresentation)).digest("hex");
+  // Two pages are considered identical if share the normalized DOM
+  getStateHash(dom) {
+    return crypto.createHash("sha256").update(JSON.stringify(dom)).digest("hex");
   }
 }

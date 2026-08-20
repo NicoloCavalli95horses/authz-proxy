@@ -59,10 +59,10 @@ def save_interaction(db: Session, run_id: int, payload: dict) -> InteractionExec
   # ----------------------------------------
   # Get/create logical interaction
   # ----------------------------------------
-  interaction = db.query(Interaction).filter_by(type=interaction_type, source_state_hash=from_state.hash, element_fingerprint=fingerprint).first()
+  interaction = db.query(Interaction).filter_by(type=interaction_type, element_fingerprint=fingerprint).first()
   
   if interaction is None:
-    interaction = Interaction(type=interaction_type, source_state_hash=from_state.hash, element_fingerprint=fingerprint, element_data=element_data)
+    interaction = Interaction(type=interaction_type, element_fingerprint=fingerprint, element_data=element_data)
     db.add(interaction)
     db.flush()
 

@@ -10,7 +10,7 @@ export const config = Object.freeze({
 
   // Setup initial page. This may not be exactly the page under test (!)
   // [NOTE] authentication and CAPTCHA solving have to be done manually
-  initialPage: "http://localhost:3456/",//"https://example.com/",
+  initialPage: "http://localhost:3456/",
 
   // Increases the number of GUI states to explore exponentially
   maxExplorationDepth: 1,
@@ -20,7 +20,7 @@ export const config = Object.freeze({
   ignoreDOMarea: {
     tags: ["nav", "footer", "header", "[role=banner], img, input"],
     viewport: {
-      top: 200,
+      top: 0,
       left: 0,
       right: 0,
       bottom: 0

@@ -11,7 +11,6 @@ from ..db.models import (
 
 from .save_to_json import save_to_json
 from urllib.parse import urlparse, parse_qs
-from datetime import datetime
 
 # ===========
 # Functions
@@ -56,7 +55,7 @@ def compare_network_pairs(pairs):
 
       if match["type"] == "similar":
         # Request from replay is a modified version of the request from exploration
-        # results.append(...)
+        # [TODO]
         continue
 
       if match["type"] == "unmatched":
@@ -94,8 +93,8 @@ def analyze_replay_only_response(response):
 
 
 """
- 1 - Find, for each replay request, the best match with a request belonging to the exploration set
- 2 - Returns the degree of matching (ratio)
+1 - Find, for each replay request, the best match with a request belonging to the exploration set
+2 - Returns the degree of matching (ratio)
 """
 def match_requests(exploration_http_events, replay_http_events, MIN_SIMILARITY=3):
   matches = []

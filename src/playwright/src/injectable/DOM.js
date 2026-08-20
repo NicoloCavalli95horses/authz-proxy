@@ -60,7 +60,6 @@ function extractClickableElements(ignoreObj) {
     "radio",
     "switch",
     "tab",
-    "treeitem"
   ]);
 
   const candidateEls = [];
@@ -148,11 +147,6 @@ function extractClickableElements(ignoreObj) {
     if (style.pointerEvents === "none" || style.visibility === "hidden") {
       continue;
     }
-
-    if (style.cursor === "pointer") {
-      reasons.push("cursor:pointer");
-    }
-
 
     //-------------------------
     // Exclude invisible elements
@@ -317,40 +311,22 @@ function getSiblingInfo(el) {
 
 
 // Used to select the element 
-function findElement(fp, threshold = 0.85) {
-  console.log('[DOM] searching for element: ', fp);
+function findElement(fp) {
+  console.log('[DOM] searching for element:', fp);
 
-  // candidates are visible DOM elements
   const candidates = Array.from(document.querySelectorAll(fp.tag)).filter(el => {
     const style = window.getComputedStyle(el);
     return (style.display !== "none" && style.visibility !== "hidden" && el.offsetParent !== null);
   });
 
-  let best = null;
-  let bestScore = 0;
-
-  // Best case scenario with stable id
-  if (fp.id) {
-    const exact = document.getElementById(fp.id);
-    if (exact && exact.tagName.toLowerCase() === fp.tag) {
-      return { element: exact, score: 1 };
-    }
-  }
-
   for (const el of candidates) {
-    const data = getElementData(el);
-    const score = fingerprintScore(data, fp);
-    if (score > bestScore) {
-      bestScore = score;
-      best = el;
+    const candidateFingerprint = fingerprint(el);
+    if (candidateFingerprint === fp.fingerprint) {
+      return { element: el, score: 1 };
     }
   }
 
-  if (bestScore < threshold) {
-    return { element: null, score: bestScore };
-  }
-
-  return { element: best, score: bestScore };
+  return { element: null, score: 0 };
 }
 
 
