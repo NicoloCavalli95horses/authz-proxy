@@ -4,7 +4,7 @@
 // ===========
 // Import
 // ===========
-import { getElementData } from "./DOM.js";
+import { getElFingerprint } from "./DOM.js";
 
 
 // ===========
@@ -76,7 +76,7 @@ function installClickListener() {
     if (canEmitClick) {
       const target = e.target instanceof Element ? getClickableTarget(e.target) : null;
       if (!target) { return; }
-      window._dispatchEvent({ type: "CLICK", data: getElementData(target) });
+      window._dispatchEvent({ type: "CLICK", data: getElFingerprint(target) });
     }
   }, true);
 }

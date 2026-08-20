@@ -139,11 +139,6 @@ class Interaction(Base):
   )
 
   element_fingerprint: Mapped[str] = mapped_column(
-    String(256),
-    nullable=False,
-  )
-
-  element_data: Mapped[dict] = mapped_column(
     JSONB,
     nullable=False,
   )

@@ -17,8 +17,8 @@ export function injectDOMfn() {
 function installDOMfn() {
   return {
     findElement,
-    getElementData,
-    fingerprintScore,
+    fingerprintMatches,
+    getElFingerprint,
     extractClickableElements,
   }
 }
@@ -37,12 +37,8 @@ function extractClickableElements(ignoreObj) {
     style.id = "__redRectStyle";
     style.textContent = `
       ._redRect{
-        outline:3px solid red !important;
-        outline-offset:-2px !important;
-      }
-
-      ._redRect:hover{
-        outline:3px solid orange !important;
+        outline:6px solid red !important;
+        outline-offset:-4px !important;
       }
     `;
     document.head.appendChild(style);
@@ -62,7 +58,7 @@ function extractClickableElements(ignoreObj) {
     "tab",
   ]);
 
-  const candidateEls = [];
+  const clickableEls = [];
   const all = document.querySelectorAll("*");
 
   for (const el of all) {
@@ -175,27 +171,13 @@ function extractClickableElements(ignoreObj) {
     //-------------------------
     if (reasons.length > 0) {
       el.classList.add("_redRect");
-      candidateEls.push({ type: "CLICK", data: getElementData(el), reasons });
+      clickableEls.push({ type: "CLICK", data: getElFingerprint(el), reasons });
     }
   }
-  const validEls = candidateEls.filter(el => !hasInteractiveAncestor(el.data));
 
-  console.log('[DOM] Clickable elements', validEls);
-  return validEls;
+  return clickableEls;
 }
 
-function hasInteractiveAncestor(data) {
-  let p = data.parent;
-
-  while (p) {
-    const tag = p.tag.toLowerCase();
-    if (tag === "button" || tag === "a" || tag === "label" || tag === "summary") { return true; }
-    if (p.role) { return true; }
-    p = p.parent;
-  }
-
-  return false;
-}
 
 function isInsideIgnoredTags(el, ignoredRegions = []) {
   if (!ignoredRegions.length) { return false; }
@@ -224,232 +206,112 @@ function isInsideIgnoredArea(rect, config = {}) {
 }
 
 
-// Used to generate fingerprint
-export function getElementData(el, depth = 2) {
-  if (!el) { return null; }
-
-  return {
-    tag: el.tagName.toLowerCase(),
-    text: normalizeText(el.innerText || el.textContent),
-    id: getStableId(el),
-    attributes: getUsefulAttributes(el),
-    role: el.getAttribute("role"),
-    type: el.getAttribute("type"),
-    name: el.getAttribute("name"),
-    aria: getAriaAttributes(el),
-    parent: depth > 0 ? getElementData(el?.parentElement, depth - 1) : null,
-    siblings: getSiblingInfo(el),
-    fingerprint: fingerprint(el),
-    rect: el.rect || el.getBoundingClientRect(),
-  };
-}
-
-function normalizeText(text) {
-  return text?.replace(/\s+/g, " ").trim().slice(0, 200) || "";
-}
-
-
-function getStableId(el) {
-  const id = el.getAttribute("id");
-  if (!id || isProbablyDynamicId(id)) { return null; }
-
-  const matches = document.querySelectorAll(`#${CSS.escape(id)}`);
-  return matches.length === 1 ? id : null;
-}
-
-function isProbablyDynamicId(id) {
-  return (
-    /\d{4,}/.test(id) ||
-    /[:]/.test(id) ||
-    /random|uuid|generated/i.test(id)
-  );
-}
-
-function getUsefulAttributes(el) {
-  const STABLE_ATTRIBUTES = [
-    "name",
-    "type",
-    "role",
-    "href",
-    "title",
-    "alt",
-    "placeholder",
-    "aria-label",
-    "value"
-  ];
-  const result = {};
-
-  for (const attr of STABLE_ATTRIBUTES) {
-    const value = el.getAttribute(attr);
-    if (value) {
-      result[attr] = value;
-    }
-  }
-  return result;
-}
-
-function getAriaAttributes(el) {
-  const result = {};
-
-  for (const attr of el.attributes) {
-    if (attr.name.startsWith("aria-")) {
-      result[attr.name] = attr.value;
-    }
-  }
-
-  return result;
-}
-
-
-function getSiblingInfo(el) {
-  return Array
-    .from(el.parentElement?.children || [])
-    .filter(child => child !== el)
-    .map(child => ({ tag: child.tagName.toLowerCase(), text: normalizeText(child.innerText) }))
-    .slice(0, 10);
-}
-
 
 // Used to select the element 
 function findElement(fp) {
-  console.log('[DOM] searching for element:', fp);
 
-  const candidates = Array.from(document.querySelectorAll(fp.tag)).filter(el => {
+  const candidates = Array.from(
+    document.querySelectorAll(fp.tag)
+  ).filter(el => {
     const style = window.getComputedStyle(el);
-    return (style.display !== "none" && style.visibility !== "hidden" && el.offsetParent !== null);
+
+    return (
+      style.display !== "none" &&
+      style.visibility !== "hidden" &&
+      el.offsetParent !== null
+    );
   });
 
-  for (const el of candidates) {
-    const candidateFingerprint = fingerprint(el);
-    if (candidateFingerprint === fp.fingerprint) {
-      return { element: el, score: 1 };
+  const matches = candidates.filter(el => {
+    const candidateFp = getElFingerprint(el);
+    return fingerprintMatches(candidateFp, fp);
+  });
+
+  return matches.length === 1 ? matches[0] : null;
+}
+
+
+
+/**
+ * Returns element fingerprint
+ * Example
+ * 
+  {
+    tag: "button",
+    id: null,
+    attributes: [
+      {
+        name: "data-name",
+        value: "f78979af-5680-4b95-8a93-27c5f66ba2f3"
+      }
+    ],
+    rect: {
+      x: 240,
+      y: 95.8125,
+      width: 200,
+      height: 200
+    }
+  }
+ * 
+ */
+export function getElFingerprint(el) {
+  if (!el) { return null; }
+
+  const attrs = Array.from(el.attributes)
+    .filter(attr => attr.name.startsWith("data-") || attr.name === "role" || attr.name === "name")
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map(attr => ({ name: attr.name, value: attr.value }));
+
+  const rect = el.rect || el.getBoundingClientRect();
+
+  return {
+    tag: el.tagName.toLowerCase(),
+    id: el.id || null,
+    attributes: attrs,
+    rect: {
+      x: rect.x,
+      y: rect.y,
+      width: rect.width,
+      height: rect.height
+    }
+  };
+}
+
+
+
+function rectMatches(a, b, tolerance = 0) {
+  return (
+    Math.abs(a.x - b.x) <= tolerance &&
+    Math.abs(a.y - b.y) <= tolerance &&
+    Math.abs(a.width - b.width) <= tolerance &&
+    Math.abs(a.height - b.height) <= tolerance
+  );
+}
+
+
+
+function fingerprintMatches(candidate, target) {
+  if (candidate.tag !== target.tag) {
+    return false;
+  }
+
+  if (candidate.id !== target.id) {
+    return false;
+  }
+
+  if (candidate.attributes.length !== target.attributes.length) {
+    return false;
+  }
+
+  for (const attr of target.attributes) {
+    const candidateAttr = candidate.attributes.find(
+      a => a.name === attr.name
+    );
+
+    if (!candidateAttr || candidateAttr.value !== attr.value) {
+      return false;
     }
   }
 
-  return { element: null, score: 0 };
-}
-
-
-function isEqual(a, b) {
-  return a === b ? 1 : 0;
-}
-
-function escapeAttributeValue(value) {
-  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-}
-
-// Calculate attribute similarity
-function attributesSimilarity(a, b) {
-  const keys = Object.keys(b);
-
-  if (keys.length === 0) {
-    return 1;
-  }
-
-  let match = 0;
-  for (const key of keys) {
-    if (a[key] === b[key]) {
-      match++;
-    }
-  }
-
-  return match / keys.length;
-}
-
-function siblingsSimilarity(a, b) {
-  if (!a || !b) {
-    return 0;
-  }
-
-  const aTexts = a.map(x => x.text).filter(Boolean);
-  const bTexts = b.map(x => x.text).filter(Boolean);
-
-
-  if (aTexts.length === 0) {
-    return 0;
-  }
-
-  const common = aTexts.filter(x => bTexts.includes(x));
-
-  return common.length / Math.max(aTexts.length, bTexts.length);
-}
-
-// Calculate parent similarity
-function parentSimilarity(candidateParent, savedParent) {
-  if (!candidateParent || !savedParent) {
-    return 0;
-  }
-
-  return fingerprintScore(candidateParent, savedParent);
-}
-
-function fingerprint(el) {
-  if (!el) { return ""; }
-
-  let fp = el.tagName.toLowerCase();
-
-  if (el.id) {
-    fp += `#${el.id}`;
-  }
-
-  for (const attr of el.attributes) {
-    if (attr.name.startsWith("data-") || attr.name === "role" || attr.name === "name") {
-      fp += `[${attr.name}="${attr.value}"]`;
-    }
-  }
-
-  return fp;
-}
-
-
-function textSimilarity(a = "", b = "") {
-  a = a.trim().toLowerCase();
-  b = b.trim().toLowerCase();
-
-  if (!a && !b) {
-    return 1;
-  }
-
-  const distance = levenshtein(a, b);
-  return 1 - distance / Math.max(a.length, b.length);
-}
-
-function levenshtein(a, b) {
-  const matrix = Array.from({ length: b.length + 1 }, () => Array(a.length + 1).fill(0));
-
-  for (let i = 0; i <= b.length; i++)
-    matrix[i][0] = i;
-
-  for (let j = 0; j <= a.length; j++)
-    matrix[0][j] = j;
-
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      matrix[i][j] =
-        b[i - 1] === a[j - 1]
-          ? matrix[i - 1][j - 1]
-          : Math.min(
-            matrix[i - 1][j - 1] + 1,
-            matrix[i][j - 1] + 1,
-            matrix[i - 1][j] + 1
-          );
-    }
-  }
-
-  return matrix[b.length][a.length];
-}
-
-
-function fingerprintScore(candidate, fp) {
-  let score = 0;
-
-  score += 0.35 * textSimilarity(candidate.text, fp.text);
-  score += 0.20 * attributesSimilarity(candidate.attributes, fp.attributes);
-  score += 0.15 * isEqual(candidate.role, fp.role);
-  score += 0.15 * parentSimilarity(candidate.parent, fp.parent);
-  score += 0.05 * siblingsSimilarity(candidate.siblings, fp.siblings);
-  score += 0.10 * isEqual(candidate.type, fp.type);
-  score += 0.05 * isEqual(candidate.name, fp.name);
-
-  return score;
+  return rectMatches(candidate.rect,target.rect,);
 }

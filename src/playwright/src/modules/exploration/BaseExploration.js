@@ -308,6 +308,29 @@ export class BaseExploration {
         return false;
       }
 
+      // log("CLICKLING ON REAL ELEMENT:",
+      //   await element.evaluate(el => {
+      //     const rect = el.getBoundingClientRect();
+      //     return {
+      //       tag: el.tagName,
+      //       text: el.textContent?.trim(),
+      //       dataName: el.getAttribute("data-name"),
+      //       class: el.className,
+      //       html: el.outerHTML,
+      //       rect: {
+      //         x: rect.x,
+      //         y: rect.y,
+      //         width: rect.width,
+      //         height: rect.height,
+      //         top: rect.top,
+      //         right: rect.right,
+      //         bottom: rect.bottom,
+      //         left: rect.left
+      //       }
+      //     };
+      //   })
+      // );
+
       await this.page.evaluate(() => {
         // Reset scroll
         window.scrollTo(0, 0);
@@ -319,7 +342,7 @@ export class BaseExploration {
       });
 
       await this.safeClick(element);
-      log("[BaseExploration] Clicked on element", data);
+      log("[BaseExploration] Clicked on element");
 
       await this.waitForIdle();
       await this.waitForDOMStable();
@@ -345,20 +368,17 @@ export class BaseExploration {
 
 
   // Finds a DOM element and retries till timeout
-  async findElement(data, timeout = 2000) {
+  async findElement(fp, timeout = 2000) {
     const start = Date.now();
 
     while (Date.now() - start < timeout) {
-      const handle = await this.page.evaluateHandle((data) => {
-        const result = window.__instrumentation__.DOMutils.findElement(data);
-        return result.element;
-      }, data);
+      const handle = await this.page.evaluateHandle((fp) => {
+        const element = window.__instrumentation__.DOMutils.findElement(fp);
+        return element;
+      }, fp);
 
       const element = handle.asElement();
-
-      if (element) {
-        return element;
-      }
+      if (element) { return element; }
 
       await handle.dispose();
       await this.page.waitForTimeout(100);

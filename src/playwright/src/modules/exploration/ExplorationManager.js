@@ -72,14 +72,14 @@ export class ExplorationManager extends BaseExploration {
       } else {
         nextState = await graph.addNode({ ...after, parent: state.id, path: [...state.path, el.data] });
         await apiSaveState(this.db[this.currentState].run_id, nextState);
-      } 
+      }
 
       graph.addEdge({ from: state.id, to: nextState.id, action: result });
 
       await apiSaveInteraction(this.db[this.currentState].run_id, {
         fromStateId: state.id,
         toStateId: nextState.id,
-        interaction: {type: result.type, data: result.data}, // clicked el details
+        interaction: { type: result.type, data: result.data }, // clicked el details
         network: result.network,
       });
 
@@ -105,12 +105,15 @@ export class ExplorationManager extends BaseExploration {
 
   // Check that the DOM element is not among the element involved in the preliminary actions
   async evaluateClickableEl(el) {
-    const isInPreliminary = await this.safePageEvaluate((obj) => {
-      if (!window.__instrumentation__?.DOMutils?.fingerprintScore) { return false; }
-      return obj.ignoreList.some(ignoreEl => {
-        return window.__instrumentation__.DOMutils.fingerprintScore(ignoreEl, obj.el.data) >= 0.95;
-      });
-    }, { el, ignoreList: this.preliminaryActions });
+    const isInPreliminary = await this.safePageEvaluate(
+      (obj) => {
+        if (!window.__instrumentation__?.DOMutils?.fingerprintMatches) { return false; }
+        return obj.ignoreList.some(ignoreEl => {
+          return window.__instrumentation__.DOMutils.fingerprintMatches(obj.el.data, ignoreEl.data, 4);
+        });
+      },
+      { el, ignoreList: this.preliminaryActions }
+    );
 
     if (isInPreliminary) {
       log("[ExplorationManager] Ignoring clickable element because was in preliminary action", el.data);
