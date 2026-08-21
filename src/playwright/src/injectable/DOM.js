@@ -279,7 +279,7 @@ export function getElFingerprint(el) {
 
 
 
-function rectMatches(a, b, tolerance = 0) {
+function rectMatches(a, b, tolerance = 4) {
   return (
     Math.abs(a.x - b.x) <= tolerance &&
     Math.abs(a.y - b.y) <= tolerance &&

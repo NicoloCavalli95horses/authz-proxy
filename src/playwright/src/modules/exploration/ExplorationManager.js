@@ -42,10 +42,9 @@ export class ExplorationManager extends BaseExploration {
 
 
   async replayExploration() {
-    await this.goToInitialState(this.initialURL);
     this.currentState = "replay";
     log("[ExplorationManager] Replying exploration...");
-    return await this.startAnalysis();
+    await this.startAnalysis();
   }
 
 

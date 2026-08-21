@@ -10,7 +10,7 @@ export const config = Object.freeze({
 
   // Setup initial page. This may not be exactly the page under test (!)
   // [NOTE] authentication and CAPTCHA solving have to be done manually
-  initialPage: "http://localhost:3456/",
+  initialPage: "",
 
   // Increases the number of GUI states to explore exponentially
   maxExplorationDepth: 2,
@@ -23,12 +23,12 @@ export const config = Object.freeze({
       top: 500,
       left: 500,
       right: 500,
-      bottom: 0
+      bottom: 100
     }
   },
 
   // Execute preliminary clicks before exploration (eg. to close cookie banner, wizard, etc)
-  hasPreliminaryAction: true,
+  hasPreliminaryAction: false,
 
   // Applied on actions (click, fill, evaluate) and navigation (goto, reload, waitForNavigation)
   maxPageTimeout: 10000,
