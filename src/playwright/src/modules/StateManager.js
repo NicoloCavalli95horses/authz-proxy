@@ -94,8 +94,8 @@ export class StateManager {
         await this.explorator.replayExploration();
       },
       onExit: async () => {
-        await this.explorator.endAnalysis({ dispose: true });
         await apiToggleProxyState(false);
+        await this.explorator.endAnalysis({ dispose: true });
       },
     });
 

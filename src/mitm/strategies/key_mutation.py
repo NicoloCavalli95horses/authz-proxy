@@ -15,7 +15,6 @@ class KeyMutationStrategy(BaseMutationStrategy):
     "can": (False, True),
     "credit": (lambda v: isinstance(v, (int, float)), 999), # turn whatever int
     "credits": (lambda v: isinstance(v, (int, float)), 999),
-    "code": ("premium", "public"), # test (l'express) was content_code
     "ad": (True, False),
     "disabled": (True, False),
     "eligible": (False, True),
