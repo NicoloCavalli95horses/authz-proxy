@@ -14,7 +14,7 @@ export function log(...args) {
   const t = new Date().toISOString();
 
   const formatted = args.map(arg =>
-    typeof arg === "object" ? util.inspect(arg, {depth: null,colors: false, maxArrayLength: null}) : arg
+    typeof arg === "object" ? util.inspect(arg, { depth: null, colors: false, maxArrayLength: null }) : arg
   );
 
   console.log(`\n[${t}][PLAYWRIGHT]`, ...formatted);

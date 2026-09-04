@@ -4,6 +4,7 @@
 //===================
 import { config } from "../../config.js";
 import { log } from "../../utils/utils.js";
+import { getDomain } from "tldts";
 
 
 //===================
@@ -48,11 +49,21 @@ export class BaseExploration {
   requestHandler = (req) => {
     if (!this.currentTransition?.data) { return; }
 
+    const url = req.url();
+
+    if (config.ignoreCrossOriginHTTPevents) {
+      const reqHost = new URL(url).hostname;
+      const pageHost = new URL(this.page.url()).hostname;
+      const isSameSite = getDomain(reqHost) === getDomain(pageHost);
+      if (!isSameSite) { return; }
+    }
+
     const id = crypto.randomUUID();
+
     const requestData = {
       id,
       method: req.method(),
-      url: req.url(),
+      url,
       headers: req.headers(),
       body: null
     };

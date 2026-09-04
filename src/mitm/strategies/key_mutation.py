@@ -44,8 +44,8 @@ class KeyMutationStrategy(BaseMutationStrategy):
     "secret": (True, False),
     "subscribed": (False, True),
     "subscription": (0, 1),
-    # "state": ("locked","active"), # value mutation strategy
-    # "title": ("free", "premium"),
+    "state": ("locked","active"), # [TODO] move to value mutation strategy
+    "title": ("free", "premium"),
     "unlock": (False, True),
     "unlocked": (False, True),
     "vip": (True, False)
