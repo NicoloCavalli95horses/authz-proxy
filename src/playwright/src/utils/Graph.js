@@ -74,7 +74,7 @@ export class Graph {
 
     if (hash && this.hashes.has(hash)) {
       // Does not add a new node if the DOM is the same
-      // DOM is the same if clickable elements and all the available texts are the same
+      // DOM is the same if clickable elements are the same
       return this.getNodeByHash(hash);
     }
 

@@ -9,7 +9,7 @@ from datetime import datetime
 # Functions
 # ===========
 def save_to_json(results):
-  today = datetime.today().strftime('%Y-%m-%d')
+  today = datetime.today().strftime('%Y-%m-%d_%H-%M')
   filename= "BAC_REPORT_"+today+".json"
   
   with open(filename, "w", encoding="utf-8") as file:

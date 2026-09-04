@@ -19,11 +19,8 @@ server = Server(state)
 
 threading.Thread(target=server.run, daemon=True).start()
 Base.test_connection()
-
-
-print("[DB] Tables:", Base.metadata.tables.keys())
 Base.metadata.create_all(bind=engine)
-print("[DB] create_all completed")
+
 
 # ===========
 # mitmproxy

@@ -59,12 +59,21 @@ export class BaseExploration {
 
     if (["POST", "PUT", "PATCH"].includes(req.method())) {
       const body = req.postData();
+      const contentType = req.headers()["content-type"] ?? "";
 
       if (body) {
-        try {
-          requestData.body = JSON.parse(body);
-        } catch {
-          requestData.body = body;
+        const isText =
+          contentType.startsWith("text/") ||
+          contentType.includes("json") ||
+          contentType.includes("xml") ||
+          contentType.includes("javascript");
+
+        if (isText && !body.includes("\x00")) {
+          try {
+            requestData.body = JSON.parse(body);
+          } catch {
+            requestData.body = body;
+          }
         }
       }
     }

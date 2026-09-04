@@ -12,6 +12,8 @@ class KeyMutationStrategy(BaseMutationStrategy):
     "access": (False, True),
     "accessible": (False, True),
     "active": (False, True),
+    "admin": (False, True),
+    "auth": (False, True),
     "can": (False, True),
     "credit": (lambda v: isinstance(v, (int, float)), 999), # turn whatever int
     "credits": (lambda v: isinstance(v, (int, float)), 999),
@@ -39,10 +41,11 @@ class KeyMutationStrategy(BaseMutationStrategy):
     "plus": (True, False),
     "restricted": (True, False),
     "role": (None, 1),
+    "secret": (True, False),
     "subscribed": (False, True),
     "subscription": (0, 1),
-    "state": ("locked","active"),
-    "title": ("free", "premium"),
+    # "state": ("locked","active"), # value mutation strategy
+    # "title": ("free", "premium"),
     "unlock": (False, True),
     "unlocked": (False, True),
     "vip": (True, False)
