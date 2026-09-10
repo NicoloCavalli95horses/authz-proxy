@@ -135,10 +135,19 @@ export class StateManager {
       return currState;
     }
 
-    for (const state of ["exploration", "replay", "analysis", "idle"]) {
-      await this.stateMachine.transition(state, this.context);
-    }    
+    await this.launchExploration();
+
     return currState; 
+  }
+
+
+
+  async launchExploration() {
+    if (this.getState() == "idle") {
+      for (const state of ["exploration", "replay", "analysis", "idle"]) {
+        await this.stateMachine.transition(state, this.context);
+      }
+    }
   }
 
 

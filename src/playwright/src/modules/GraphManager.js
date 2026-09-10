@@ -70,7 +70,7 @@ export class GraphManager extends Graph {
       const doc = document.body.cloneNode(true);
       doc.querySelector('#__playwright_debug').remove();
 
-      const KEEP_DOM_EL = "h1, h2, h3, p, button, a, input, select, textarea";
+      const KEEP_DOM_EL = "h1, h2, h3, p, button, a, select, textarea";
       const KEEP_ATTRIBUTES = ["href", "type", "name", "value", "role", "aria-label", "placeholder"];
       const elements = doc.querySelectorAll(KEEP_DOM_EL);
 

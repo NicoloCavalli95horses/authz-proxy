@@ -10,7 +10,9 @@ export const config = Object.freeze({
 
   // Setup initial page. This may not be exactly the page under test (!)
   // [NOTE] authentication and CAPTCHA solving have to be done manually
-  initialPage: "https://www.calm.com/app",
+  initialPage: "http://localhost:3456/",
+
+  startImmediately: true,
 
   // Increases the number of GUI states to explore exponentially
   maxExplorationDepth: 2,
@@ -20,10 +22,10 @@ export const config = Object.freeze({
   ignoreDOMarea: {
     tags: ["nav", "footer", "header", "[role=banner], img, input"],
     viewport: {
-      top: 400,
-      left: 200,
-      right: 400,
-      bottom: 100
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0
     }
   },
 
@@ -43,7 +45,7 @@ export const config = Object.freeze({
   enableNavigationGuard: false,
 
   // Prevent window from scrolling
-  preventScroll: true,
+  preventScroll: false,
 
   // Prevent CSS animations
   preventAnimations: false,
