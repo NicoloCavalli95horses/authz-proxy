@@ -23,8 +23,6 @@ def compare_network_pairs(pairs):
         # [Potential HTTP parameter tampering] Request from replay is a modified version of the request from exploration
         analysis = analyze_parameter_tampering(match) 
         
-        print('=== HTTP parameter tampering, baby! ===')   
-        
         if analysis["signal"] == "high":    
           results.append({
             "type": "HTTP parameter tampering",

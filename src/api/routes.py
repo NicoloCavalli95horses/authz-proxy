@@ -1,6 +1,10 @@
 # ===========
 # Import
 # ===========
+import time
+from collections import defaultdict
+from datetime import timedelta
+
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 
@@ -10,6 +14,20 @@ from ..db.crud import save_state
 from ..db.crud import save_interaction
 
 from ..services.analysis import run_analysis
+from ..services.save_to_json import save_to_json
+
+# ===========
+# Vars
+# ===========
+total = {
+  "elapsed_time": {},
+  "dom_states": defaultdict(int),
+  "interactions": defaultdict(int),
+  "http_requests": defaultdict(int),
+  "http_responses": defaultdict(int),
+  "navigations": defaultdict(int),
+  "bac": {},
+}
 
 # ===========
 # Router
@@ -24,6 +42,11 @@ def create_router(state):
   def update_proxy_state(payload: dict, status_code=200):
     enabled = payload.get("enable", False)
     state.enabled = enabled
+    
+    if enabled:
+      total["elapsed_time"]["started_at"] = time.time()
+      total["elapsed_time"]["ended_at"] = None
+    
     print(f"[API] Proxy state update: {state.enabled}")
     return {"status": "ok", "enabled": state.enabled}
   
@@ -55,10 +78,12 @@ def create_router(state):
   # Save new GUI state
   @router.post("/runs/{run_id}/states")
   def create_state(run_id: int, payload: dict, db: Session = Depends(Base.get_db)):
+  
     try:
       state = save_state(db, run_id, payload)
       db.commit()
       print(f'[API] Saved state: "id": {state.id}, "state_id": {state.state_id}')
+      total["dom_states"][run_id] += 1
       return {"status": "ok", "data": {"id": state.id,"state_id": state.state_id}}
       
     except Exception as e:
@@ -73,6 +98,11 @@ def create_router(state):
     try:
       interaction = save_interaction(db, run_id, payload)
       db.commit()
+      total["interactions"][run_id] += 1
+      total["http_requests"][run_id] += len(payload["network"]["requests"])
+      total["http_responses"][run_id] += len(payload["network"]["responses"])
+      total["navigations"][run_id] += len(payload["network"]["navigations"])
+      
       print(f'[API] Saved state: "id": {interaction.id}')
       return {"status": "ok", "data": {"interaction": interaction.id}}
       
@@ -83,7 +113,7 @@ def create_router(state):
 
 
   @router.post("/analysis", status_code=201)
-  def start_analysis(payload: dict, db: Session = Depends(Base.get_db)):
+  def start_analysis(payload: dict, db: Session = Depends(Base.get_db)):    
     if payload.get("status") != "start":
       raise HTTPException(status_code=400, detail="Invalid analysis status")
     
@@ -91,8 +121,44 @@ def create_router(state):
       raise HTTPException(status_code=409, detail="Exploration/replay runs are not initialized")
 
     print(f"[API] Starting analysis...")
-    run_analysis(db, exploration_run_id, replay_run_id)
+
+    prepare_data_count()
+    
+    # Get BAC-related counters
+    bac = run_analysis(db, exploration_run_id, replay_run_id)
+    total["bac"] = dict(bac)
+    save_to_json(total, "DATA_COUNT")
     
     return {"status": "ok"}
 
   return router
+
+
+
+def prepare_data_count():
+  # elapsed time
+  total["elapsed_time"]["ended_at"] = time.time()
+  
+  elapsed = int(total["elapsed_time"]["ended_at"] - total["elapsed_time"]["started_at"])
+  hours, remainder = divmod(elapsed, 3600)
+  minutes, seconds = divmod(remainder, 60)
+
+  total["elapsed_time"]["elapsed"] = (f"{hours:02d}:{minutes:02d}:{seconds:02d}")
+
+  # defaultdicts
+  for key in [
+    "dom_states",
+    "interactions",
+    "http_requests",
+    "http_responses",
+    "navigations"
+  ]:
+    total[key] = {
+      str(run_id): count
+      for run_id, count in total[key].items()
+    }
+
+  # Counter
+  total["bac"] = dict(total["bac"])
+
+  return total
