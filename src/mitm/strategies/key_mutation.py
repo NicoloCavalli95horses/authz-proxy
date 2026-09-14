@@ -22,33 +22,31 @@ class KeyMutationStrategy(BaseMutationStrategy):
     "eligible": (False, True),
     "enabled": (False, True),
     "entitled": (False, True),
-    "f": (0, 1),
-    "forsubscribers": (True, False),
+    "subscribers": (True, False),
     "free": (False, True),
     "full": (False, True),
     "has": (False, True),
     "is_subscriber": (False, True),
-    "level": (0, 1),
+    "level": (False, True),
     "locked": (True, False),
     "otp": (True, False),
     "paid": (True, False),
     "premium": (True, False),
-    "policy": (1, 0),
+    "policy": (True, False),
     "payment": (True, False),
     "paying": (True, False),
     "paywall": (True, False),
     "pro": (True, False),
+    "price": (lambda v: isinstance(v, (int, float)), 0),
     "plus": (True, False),
     "restricted": (True, False),
-    "role": (None, 1),
+    "role": (False, True),
     "secret": (True, False),
     "subscribed": (False, True),
-    "subscription": (0, 1),
-    "state": ("locked","active"), # [TODO] move to value mutation strategy
-    "title": ("free", "premium"),
+    "subscription": (False, True),
     "unlock": (False, True),
     "unlocked": (False, True),
-    "vip": (True, False)
+    "vip": (True, False),
   }
 
 
@@ -56,15 +54,39 @@ class KeyMutationStrategy(BaseMutationStrategy):
   def use_rule(self, obj, key, rule):
     original = obj[key]
     expected, replacement = rule
-    match = expected(original) if callable(expected) else original == expected
 
-    if match:
-      print(f"{key}: {original} -> {replacement}")
-      obj[key] = replacement
-      return True
+    # Lambda rule
+    if callable(expected):
+      if not expected(original):
+        return False
+      new_value = replacement
 
-    return False
+    # Boolean/integer toggle rule
+    else:
+      if isinstance(original, bool):
+        if original != expected:
+          return False
+        new_value = replacement
+        
+      elif original is None:
+        if expected is not False:
+          return False
+        new_value = replacement
 
+      elif isinstance(original, int):
+        if original == 0 and expected is False:
+          new_value = 1
+        elif original == 1 and expected is True:
+          new_value = 0
+        else:
+          return False
+
+      else:
+        return False
+
+    print(f"{key}: {original} -> {new_value}")
+    obj[key] = new_value
+    return True
 
   def apply(self, obj, key, context=None):
     rule = self.RULES.get(key.lower())
