@@ -1,6 +1,7 @@
 # ===========
 # Import
 # ===========
+import json
 from urllib.parse import urlparse, parse_qs
 
 
@@ -11,7 +12,7 @@ def compare_network_pairs(pairs):
   results = []
   
   for pair in pairs:
-    matches = match_requests(pair["exploration_http_events"], pair["replay_http_events"])
+    matches = map_requests(pair["exploration_http_events"], pair["replay_http_events"])
 
     for match in matches:
       if match["type"] == "identical":
@@ -19,23 +20,89 @@ def compare_network_pairs(pairs):
         continue
 
       if match["type"] == "similar":
-        # Request from replay is a modified version of the request from exploration
-        # [TODO]
-        continue
+        # [Potential HTTP parameter tampering] Request from replay is a modified version of the request from exploration
+        analysis = analyze_parameter_tampering(match) 
+        
+        print('=== HTTP parameter tampering, baby! ===')   
+        
+        if analysis["signal"] == "high":    
+          results.append({
+            "type": "HTTP parameter tampering",
+            "data": analysis,
+            "comment": "An HTTP request that appears in both runs presents a modified body or query parameters in the re-exploration phase. This data is accepted by the server.",
+          })
 
       if match["type"] == "unmatched":
-        # Request from replay has no match on the set of requests from exploration
+        # [Potential IDOR] Request from replay has no match on the set of requests from exploration
         analysis = analyze_replay_only_response(match["replay_response"])
         if analysis["signal"] == "high":
           results.append({
-            "type": "idor_bac",
+            "type": "IDOR",
             "data": {"http_event": match, "analysis": analysis},
-            "comment": "This HTTP event occurred only during the re-exploration phase"
+            "comment": "This HTTP request occurred only during the re-exploration phase. It was accepted by the server."
           })
   
   return results
 
 
+def analyze_parameter_tampering(match):
+  req_1 = match["exploration_request"]
+  req_2 = match["replay_request"]
+  res_1 = match["exploration_response"]
+  res_2 = match["replay_response"]
+
+  # Only tampered request must be accepted
+  if (is_success(res_1["status_code"]) or (not is_success(res_2["status_code"]))):
+    return None
+
+  url_1 = urlparse(req_1["url"])
+  url_2 = urlparse(req_2["url"])
+
+  # Same operation
+  if url_1.path != url_2.path:
+    return None
+
+  if req_1["method"] != req_2["method"]:
+    return None
+
+  # Compare query parameters
+  query_1 = parse_qs(url_1.query, keep_blank_values=True)
+  query_2 = parse_qs(url_2.query, keep_blank_values=True)
+  query_same = query_1 == query_2
+
+  # Compare bodies
+  body_1 = normalize_body(req_1["body"])
+  body_2 = normalize_body(req_2["body"])
+
+  body_same = body_1 == body_2
+
+  # No parameter modification
+  if query_same and body_same:
+    return None
+
+  return {
+    "signal": "high",
+    "status": {
+      "original": res_1["status_code"],
+      "mutated": res_2["status_code"],
+    },
+    "endpoint": {
+      "original": url_1.path,
+      "mutated": url_2.path,
+    },
+    "method": {
+      "original": req_1["method"],
+      "mutated": req_2["method"],
+    },
+    "query": {
+      "original": query_1,
+      "mutated": query_2,
+      },
+    "body": {
+      "original": body_1,
+      "mutated": body_2,
+    },
+  }
 
 def analyze_replay_only_response(response):   
   status_code = response["status_code"]
@@ -58,10 +125,10 @@ def analyze_replay_only_response(response):
 
 
 """
-1 - Find, for each replay request, the best match with a request belonging to the exploration set
+1 - For each request belonging to the re-exploration phase find the best match with a request belonging to the exploration phase
 2 - Returns the degree of matching (ratio)
 """
-def match_requests(exploration_http_events, replay_http_events, MIN_SIMILARITY=3):
+def map_requests(exploration_http_events, replay_http_events, MIN_SIMILARITY=3):
   matches = []
 
   for replay_request, replay_response in replay_http_events:
@@ -183,3 +250,13 @@ def serialize_http_response(response):
     "headers": response.headers,
     "body": response.body,
   }
+  
+def is_success(status_code):
+  return 200 <= status_code < 300
+
+
+def normalize_body(body):
+  try:
+    return json.loads(body)
+  except:
+    return body

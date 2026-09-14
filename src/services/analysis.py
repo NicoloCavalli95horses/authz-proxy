@@ -4,7 +4,7 @@
 from sqlalchemy.orm import Session
 from .save_to_json import save_to_json
 from .get_from_db import get_pairs
-from .find_idor import compare_network_pairs
+from .find_server_bac import compare_network_pairs
 from .find_client_bac import compare_dom_pairs
 
 # ===========
@@ -13,7 +13,6 @@ from .find_client_bac import compare_dom_pairs
 def run_analysis(db: Session, exploration_run_id: int, replay_run_id: int):
   network_results = find_network_differences(db, exploration_run_id, replay_run_id)
   dom_results = find_dom_differences(db, exploration_run_id, replay_run_id)
-  print("run_analysis", dom_results)
   save_to_json(network_results + dom_results)
 
     
