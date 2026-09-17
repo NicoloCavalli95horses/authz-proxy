@@ -100,8 +100,6 @@ export function installNavigationGuard() {
       to: url ? new URL(url, window.location.href).href : window.location.href
     });
 
-    if (config.enableNavigationGuard) { return }
-
     return originalPushState.call(this, state, title, url);
   };
 
@@ -112,8 +110,6 @@ export function installNavigationGuard() {
       from: window.location.href,
       to: url ? new URL(url, window.location.href).href : window.location.href
     });
-
-    if (config.enableNavigationGuard) { return; }
 
     return originalReplaceState.call(this, state, title, url);
   };

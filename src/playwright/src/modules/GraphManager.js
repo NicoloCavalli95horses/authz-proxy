@@ -43,16 +43,18 @@ export class GraphManager extends Graph {
 
     for (let i = 0; i < retries; i++) {
       try {
-        return await this.getDataFromBrowser();
-      } catch (error) {
-        lastError = error;
-        const retryable = error.message.includes("Execution context was destroyed") || error.message.includes("Cannot read properties");
+        const { snapshot, clickableEls } = await this.getDataFromBrowser();
+        if (!clickableEls.length) {
+          throw new Error("No clickable elements found");
+        }
+        log(`[getDataFromBrowser] Found ${clickableEls.length} clickable elements`);
+        return { snapshot, clickableEls };
+      } catch (err) {
+        lastError = err;
 
-        if (!retryable) { throw error; }
-
-        log(`[getDataFromBrowser] Retry ${i + 1}/${retries}`);
+        log(`[getDataFromBrowser] Retry ${i + 1}/${retries}: ${err.message}`);
         await this.page.waitForLoadState("domcontentloaded").catch(() => { });
-        await this.page.waitForTimeout(500);
+        await this.page.waitForTimeout(500 * (i + 1));
       }
     }
 

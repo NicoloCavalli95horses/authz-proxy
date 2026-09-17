@@ -72,6 +72,7 @@ function extractClickableElements(ignoreObj) {
     //-------------------------
 
     const tag = el.tagName.toLowerCase();
+    if (tag === "body" || tag === "html") { continue; }
 
     if (tag === "button") {
       reasons.push("button");

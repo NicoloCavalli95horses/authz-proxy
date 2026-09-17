@@ -83,7 +83,19 @@ def save_interaction(db: Session, run_id: int, payload: dict) -> InteractionExec
     request_map[req["id"]] = request
 
   for res in network.get("responses", []):
-    request = request_map[res["requestId"]]
+    # Responses are not saved
+    request_id = res.get("requestId")
+    
+    if not request_id:
+      print("[WARN] Response without request_id, skipping")
+      continue
+    
+    request = request_map.get(request_id)
+
+    if request is None:
+      print(f"[WARN] No matching request for response: {request_id}")
+      continue
+
     save_http_response(db=db, request_id=request.id, payload=res)
 
   for nav in network.get("navigations", []):

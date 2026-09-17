@@ -23,7 +23,7 @@ def compare_network_pairs(pairs):
         # [Potential HTTP parameter tampering] Request from replay is a modified version of the request from exploration
         analysis = analyze_parameter_tampering(match) 
         
-        if analysis["signal"] == "high":    
+        if analysis and analysis["signal"] == "high":    
           results.append({
             "type": "HTTP parameter tampering",
             "data": analysis,
@@ -33,7 +33,7 @@ def compare_network_pairs(pairs):
       if match["type"] == "unmatched":
         # [Potential IDOR] Request from replay has no match on the set of requests from exploration
         analysis = analyze_replay_only_response(match["replay_response"])
-        if analysis["signal"] == "high":
+        if analysis and analysis["signal"] == "high":
           results.append({
             "type": "IDOR",
             "data": {"http_event": match, "analysis": analysis},

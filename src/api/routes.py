@@ -2,6 +2,8 @@
 # Import
 # ===========
 import time
+import traceback
+
 from collections import defaultdict
 from datetime import timedelta
 
@@ -108,7 +110,13 @@ def create_router(state):
       
     except Exception as e:
       db.rollback()
-      print(f"[API] Failed to save state: {type(e).__name__}: {e}")
+      print("\n========== EXCEPTION ==========")
+      print(f"type: {type(e).__name__}")
+      print(f"message: {e}")
+      print(f"run_id: {run_id}")
+      traceback.print_exc()
+      print("================================\n")
+      
       raise HTTPException(status_code=500, detail="Failed to save interaction")
 
 
