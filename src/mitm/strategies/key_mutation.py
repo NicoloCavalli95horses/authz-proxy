@@ -1,13 +1,16 @@
 # ===========
 # Import
 # ===========
+import requests
 from .base_mutation import BaseMutationStrategy
-
+import os
 
 # ===========
 # Class
 # ===========
 class KeyMutationStrategy(BaseMutationStrategy):
+  seen_json_keys = set()
+  POST_URL = f"http://{os.getenv("API_HOST")}:{os.getenv("API_PORT")}/api/json-keys"
   RULES = {
     "access": (False, True),
     "accessible": (False, True),
@@ -84,8 +87,16 @@ class KeyMutationStrategy(BaseMutationStrategy):
       else:
         return False
 
-    print(f"{key}: {original} -> {new_value}")
     obj[key] = new_value
+    
+    # Save affected JSON key and mutated value
+    entry = (key, new_value)
+    if entry not in self.seen_json_keys:
+      self.seen_json_keys.add(entry)
+      response = requests.post(self.POST_URL, json={"key": key, "original": original, "mutated": new_value}, timeout=2)
+      print('Saving new JSON key >> request done to fastapi')
+      response.raise_for_status()
+    
     return True
 
   def apply(self, obj, key, context=None):

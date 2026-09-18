@@ -14,6 +14,7 @@ from ..db.database import Base
 from ..db.crud import create_run
 from ..db.crud import save_state
 from ..db.crud import save_interaction
+from ..db.crud import save_json_key
 
 from ..services.analysis import run_analysis
 from ..services.save_to_json import save_to_json
@@ -22,13 +23,14 @@ from ..services.save_to_json import save_to_json
 # Vars
 # ===========
 total = {
+  "bac": {},
   "elapsed_time": {},
   "dom_states": defaultdict(int),
   "interactions": defaultdict(int),
   "http_requests": defaultdict(int),
   "http_responses": defaultdict(int),
   "navigations": defaultdict(int),
-  "bac": {},
+  "json_keys": defaultdict(int),
 }
 
 # ===========
@@ -73,7 +75,11 @@ def create_router(state):
 
     except Exception as e:
       db.rollback()
-      print(f"[API] Failed to create run: {type(e).__name__}: {e}")
+      print("\n========== EXCEPTION ==========")
+      print(f"type: {type(e).__name__}")
+      print(f"message: {e}")
+      traceback.print_exc()
+      print("================================\n")
       raise HTTPException(status_code=500, detail="Failed to create run")
     
     
@@ -90,7 +96,12 @@ def create_router(state):
       
     except Exception as e:
       db.rollback()
-      print(f"[API] Failed to save state: {type(e).__name__}: {e}")
+      print("\n========== EXCEPTION ==========")
+      print(f"type: {type(e).__name__}")
+      print(f"message: {e}")
+      print(f"run_id: {run_id}")
+      traceback.print_exc()
+      print("================================\n")
       raise HTTPException(status_code=500, detail="Failed to save state")
     
     
@@ -116,7 +127,6 @@ def create_router(state):
       print(f"run_id: {run_id}")
       traceback.print_exc()
       print("================================\n")
-      
       raise HTTPException(status_code=500, detail="Failed to save interaction")
 
 
@@ -139,8 +149,26 @@ def create_router(state):
     
     return {"status": "ok"}
 
-  return router
 
+  @router.post("/json-keys", status_code=200)
+  def create_json_key(payload: dict, db: Session = Depends(Base.get_db)):
+    try:
+      save_json_key(db, replay_run_id, payload)
+      db.commit()
+      print(f'[API] Saved JSON key: {payload}')
+      total["json_keys"][replay_run_id] += 1
+      return {"status": "ok"}
+      
+    except Exception as e:
+      print("\n========== EXCEPTION ==========")
+      print(f"type: {type(e).__name__}")
+      print(f"message: {e}")
+      print(f"run_id: {replay_run_id}")
+      traceback.print_exc()
+      print("================================\n")
+      raise HTTPException(status_code=500, detail="Failed to save JSON key")
+
+  return router
 
 
 def prepare_data_count():
@@ -159,7 +187,8 @@ def prepare_data_count():
     "interactions",
     "http_requests",
     "http_responses",
-    "navigations"
+    "navigations",
+    "json_keys"
   ]:
     total[key] = {
       str(run_id): count

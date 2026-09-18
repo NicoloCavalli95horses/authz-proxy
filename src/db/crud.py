@@ -10,6 +10,7 @@ from .models import HttpResponse
 from .models import Navigation
 from .models import Interaction
 from .models import InteractionExecution
+from .models import RunJSONKey
 
 # ===========
 # Functions
@@ -159,3 +160,12 @@ def save_navigation(db: Session, execution_id: int, payload: dict) -> Navigation
   db.flush()
 
   return navigation
+
+def save_json_key(db: Session, run_id: int, payload: dict):
+  json_key = RunJSONKey(
+    run_id=run_id,
+    key=payload["key"],
+    original=payload["original"],
+    mutated=payload["mutated"],
+  )
+  db.add(json_key)

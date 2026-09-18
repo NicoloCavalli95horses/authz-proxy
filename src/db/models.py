@@ -42,6 +42,11 @@ class Run(Base):
     JSONB,
     nullable=False,
   )
+  
+  affected_json_keys: Mapped[list["RunJSONKey"]] = relationship(
+    back_populates="run",
+    cascade="all, delete-orphan",
+  )
 
   # Relationships
   states: Mapped[list["DomState"]] = relationship(
@@ -360,4 +365,44 @@ class HttpResponse(Base):
   # Relationships
   request: Mapped["HttpRequest"] = relationship(
     back_populates="response",
+  )
+
+class RunJSONKey(Base):
+  __tablename__ = "run_json_keys"
+
+  id: Mapped[int] = mapped_column(
+    Integer,
+    primary_key=True,
+  )
+
+  run_id: Mapped[int] = mapped_column(
+    ForeignKey("runs.id", ondelete="CASCADE"),
+    nullable=False,
+  )
+
+  key: Mapped[str] = mapped_column(
+    Text,
+    nullable=False,
+  )
+
+  original: Mapped[str] = mapped_column(
+    JSONB,
+    nullable=False,
+  )
+
+  mutated: Mapped[str] = mapped_column(
+    JSONB,
+    nullable=False,
+  )
+
+  run: Mapped["Run"] = relationship(
+    back_populates="affected_json_keys",
+  )
+
+  __table_args__ = (
+    UniqueConstraint(
+      "run_id",
+      "key",
+      name="uq_run_json_key",
+    ),
   )

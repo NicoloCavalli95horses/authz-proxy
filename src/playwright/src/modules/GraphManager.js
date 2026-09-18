@@ -44,9 +44,6 @@ export class GraphManager extends Graph {
     for (let i = 0; i < retries; i++) {
       try {
         const { snapshot, clickableEls } = await this.getDataFromBrowser();
-        if (!clickableEls.length) {
-          throw new Error("No clickable elements found");
-        }
         log(`[getDataFromBrowser] Found ${clickableEls.length} clickable elements`);
         return { snapshot, clickableEls };
       } catch (err) {

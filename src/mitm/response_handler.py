@@ -33,7 +33,7 @@ class ResponseHandler:
     content_type = flow.response.headers.get("content-type", "").lower()
     
     if "json" in content_type:
-      print("=== Intercepted HTTP response of type: JSON ===")
+      print("Intercepted HTTP response of type: JSON")
       
       if not self.state.enabled and not FORCE_PROXY_ACTIVE:
         return
@@ -49,10 +49,10 @@ class ResponseHandler:
       flow.response.text = json.dumps(data, ensure_ascii=False) # dumps uses escape by default, this prevents char trasformation
     
     elif "html" in content_type:
-      print("=== Intercepted HTTP response of type: HTML ===")
+      print("Intercepted HTTP response of type: HTML")
         
     else:
-      print("=== Unknown format", content_type)
+      print("Unhandled format", content_type)
 
   def apply_strategies(self, obj, key, context):
     for strategy in self.strategies:
