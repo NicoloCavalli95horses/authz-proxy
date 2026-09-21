@@ -5,6 +5,8 @@ import requests
 from .base_mutation import BaseMutationStrategy
 import os
 
+FORCE_PROXY_ACTIVE = os.getenv("FORCE_PROXY_ACTIVE", "false").lower() == "true"
+
 # ===========
 # Class
 # ===========
@@ -14,7 +16,7 @@ class KeyMutationStrategy(BaseMutationStrategy):
   RULES = {
     "access": (False, True),
     "accessible": (False, True),
-    "active": (False, True),
+    "active": (False, True), #this breaks Promova for some reason
     "admin": (False, True),
     "auth": (False, True),
     "can": (False, True),
@@ -30,7 +32,7 @@ class KeyMutationStrategy(BaseMutationStrategy):
     "full": (False, True),
     "has": (False, True),
     "is_subscriber": (False, True),
-    "level": (False, True),
+    # "level": (False, True), # this breaks Lingualeo
     "locked": (True, False),
     "otp": (True, False),
     "paid": (True, False),
@@ -91,10 +93,12 @@ class KeyMutationStrategy(BaseMutationStrategy):
     
     # Save affected JSON key and mutated value
     entry = (key, new_value)
-    if entry not in self.seen_json_keys:
+    print(f"key: {key}, original: {original}, mutated: {new_value}")
+    
+    if (entry not in self.seen_json_keys) and not (FORCE_PROXY_ACTIVE):
       self.seen_json_keys.add(entry)
       response = requests.post(self.POST_URL, json={"key": key, "original": original, "mutated": new_value}, timeout=2)
-      print('Saving new JSON key >> request done to fastapi')
+      print('Saving new JSON key to FastAPI')
       response.raise_for_status()
     
     return True

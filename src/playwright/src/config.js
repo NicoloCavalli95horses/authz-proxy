@@ -10,7 +10,7 @@ export const config = Object.freeze({
 
   // Setup initial page. This may not be exactly the page under test (!)
   // [NOTE] authentication and CAPTCHA solving have to be done manually
-  initialPage: "localhost:3456",
+  initialPage: "",
 
   startImmediately: false,
 
@@ -21,12 +21,22 @@ export const config = Object.freeze({
   // [Note] by connecting via CDP, Playwright cannot control the viewport. Force the viewport via Browser DevTools if needed
   ignoreDOMarea: {
     tags: ["nav", "footer", "header", "[role=banner], img, input"],
+
+    // lingualeo:
     viewport: {
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0
+      top: 200,
+      left: 500,
+      right: 100,
+      bottom: 100
     }
+
+    // Promova
+    // viewport: {
+    //   top: 300,
+    //   left: 500,
+    //   right: 100,
+    //   bottom: 0
+    // }
 
     // Calm.com
     // viewport: {
@@ -50,10 +60,10 @@ export const config = Object.freeze({
   enableClockMocking: false,
 
   // <a href="">, window.open, history.push, assign and replace and other navigation APIs are blocked to speed up the exploration
-  enableNavigationGuard: true,
+  enableNavigationGuard: false,
 
   // Prevent window from scrolling
-  preventScroll: false,
+  preventScroll: true,
 
   // Prevent CSS animations
   preventAnimations: false,

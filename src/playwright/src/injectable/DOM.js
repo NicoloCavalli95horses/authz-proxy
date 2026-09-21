@@ -59,6 +59,7 @@ function extractClickableElements(ignoreObj) {
   ]);
 
   const clickableEls = [];
+  const registeredFps = new Set();
   const all = document.querySelectorAll("*");
 
   for (const el of all) {
@@ -170,10 +171,14 @@ function extractClickableElements(ignoreObj) {
     //-------------------------
     // Highlight
     //-------------------------
-    if (reasons.length > 0) {
-      el.classList.add("_redRect");
-      clickableEls.push({ type: "CLICK", data: getElFingerprint(el), reasons });
-    }
+    if (reasons.length <= 0) { continue; }
+
+    const fp = getElFingerprint(el);
+    if (registeredFps.has(JSON.stringify(fp))) { continue; }
+
+    registeredFps.add(fp);
+    el.classList.add("_redRect");
+    clickableEls.push({ type: "CLICK", data: fp, reasons });
   }
 
   return clickableEls;
@@ -228,7 +233,15 @@ function findElement(fp) {
     return fingerprintMatches(candidateFp, fp);
   });
 
-  return matches.length === 1 ? matches[0] : null;
+  if (matches.length > 1) {
+    return filterMatches(matches, fp);
+  }
+
+  if (matches == 1) {
+    return matches[0];
+  }
+
+  return null;
 }
 
 
@@ -268,6 +281,7 @@ export function getElFingerprint(el) {
   return {
     tag: el.tagName.toLowerCase(),
     id: el.id || null,
+    classes: Array.from(el.classList),
     attributes: attrs,
     rect: {
       x: rect.x,
@@ -314,5 +328,32 @@ function fingerprintMatches(candidate, target) {
     }
   }
 
-  return rectMatches(candidate.rect,target.rect,);
+  return rectMatches(candidate.rect, target.rect);
+}
+
+// Multiple matches have been found
+// > these are likely nested <div> elements that are rendered in the same exact spot (they have identical DOMrect)
+// > we cannot identify the real match based on id or attributes
+// In this scenario, we leverage existing CSS classes (if any)
+// Otherwise, we take the most external match (in the DOM tree)
+function filterMatches(matches, target) {
+  if (target.classes?.length > 0) {
+    const exactMatches = matches.filter(match => {
+      const classes = [...match.classList];
+
+      return (
+        classes.length === target.classes.length &&
+        target.classes.every(cls => classes.includes(cls))
+      );
+    });
+
+    if (exactMatches.length == 1) {
+      return exactMatches[0];
+    }
+  }
+
+  return matches.reduce((outermost, match) => {
+    if (outermost === null) { return match; }
+    return outermost.contains(match) ? outermost : match;
+  }, null);
 }

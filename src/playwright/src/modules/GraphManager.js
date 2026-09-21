@@ -44,6 +44,11 @@ export class GraphManager extends Graph {
     for (let i = 0; i < retries; i++) {
       try {
         const { snapshot, clickableEls } = await this.getDataFromBrowser();
+        
+        if (!clickableEls.length) {
+          throw new Error("No clickable elements found");
+        }
+        
         log(`[getDataFromBrowser] Found ${clickableEls.length} clickable elements`);
         return { snapshot, clickableEls };
       } catch (err) {
@@ -54,8 +59,9 @@ export class GraphManager extends Graph {
         await this.page.waitForTimeout(500 * (i + 1));
       }
     }
-
-    throw lastError;
+    
+    log(`[getDataFromBrowser] Proceeding with no snapshot and no clickable elements`);
+    return { snapshot: "", clickableEls: []};
   }
 
 
@@ -69,7 +75,7 @@ export class GraphManager extends Graph {
       const doc = document.body.cloneNode(true);
       doc.querySelector('#__playwright_debug').remove();
 
-      const KEEP_DOM_EL = "h1, h2, h3, p, button, a, select, textarea";
+      const KEEP_DOM_EL = "h1, h2, h3, h4, h5, h6, p, button, a, select, textarea";
       const KEEP_ATTRIBUTES = ["href", "type", "name", "value", "role", "aria-label", "placeholder"];
       const elements = doc.querySelectorAll(KEEP_DOM_EL);
 

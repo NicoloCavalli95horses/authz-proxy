@@ -25,22 +25,52 @@ export function installNavigationGuard() {
   // <a href=""> 
   //-------------------------
   document.addEventListener("click", e => {
-    const link = e.target.closest("a");
+    const a = e.target.closest("a");
 
-    if (link && link.href) {
+    if (a && a.href) {
       window._dispatchEvent({
         type: "NAVIGATION_ATTEMPT",
         source: "anchor",
         from: window.location.href,
-        to: link.href
+        to: a.href
       });
-
-      if (config.enableNavigationGuard) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
     }
+
+    const target = a.getAttribute("target");
+
+    if (target && target !== "_self") {
+      // Prevent opening of new tabs
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    // Prevent navigation in any case
+    if (config.enableNavigationGuard) {
+      e.preventDefault();
+    }
+    
   }, true);
+
+
+  document.addEventListener("click", e => {
+    const a = e.target.closest("a");
+
+    if (!a) return;
+
+    const target = a.getAttribute("target");
+
+    if (target && target !== "_self") {
+        window._dispatchEvent({
+            type: "NAVIGATION_ATTEMPT",
+            source: "a[target]",
+            from: window.location.href,
+            to: new URL(a.href, window.location.href).href,
+            target
+        });
+
+        e.preventDefault();
+    }
+}, true);
 
   //-------------------------
   // Default form submit
@@ -149,8 +179,6 @@ export function installNavigationGuard() {
   //-------------------------
   // window.open
   //-------------------------
-  const originalOpen = window.open;
-
   window.open = function (...args) {
     window._dispatchEvent({
       type: "NAVIGATION_ATTEMPT",
@@ -159,8 +187,7 @@ export function installNavigationGuard() {
       to: args[0] ? new URL(args[0], window.location.href).href : null
     });
 
-    if (config.enableNavigationGuard) { return null; }
-
-    return originalOpen.apply(this, args);
+    // Prevent opening new tab in any case
+    return null;
   };
 }

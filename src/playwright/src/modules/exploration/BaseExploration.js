@@ -68,6 +68,8 @@ export class BaseExploration {
       body: null
     };
 
+    log("[BaseExploration][NETWORK] Intercepted request", requestData); // omit body for brevity
+
     if (["POST", "PUT", "PATCH"].includes(req.method())) {
       const body = req.postData();
       const contentType = req.headers()["content-type"] ?? "";
@@ -211,7 +213,7 @@ export class BaseExploration {
 
 
   // Wait for network idle
-  async waitForIdle(timeout = 2500, quietPeriod = 400) {
+  async waitForIdle(timeout = 4000, quietPeriod = 600) {
     const start = Date.now();
     while (Date.now() - start < timeout) {
       const noPendingRequests = this.pendingRequests.size === 0;
@@ -318,7 +320,7 @@ export class BaseExploration {
 
 
 
-  async findAndClick(data, timeout = 2500) {
+  async findAndClick(data) {
     try {
       await this.waitForPageReady();
       const element = await this.findElement(data);
