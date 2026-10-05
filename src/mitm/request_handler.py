@@ -20,4 +20,3 @@ class RequestHandler:
       return
     
     print(flow.request.pretty_url)
-        

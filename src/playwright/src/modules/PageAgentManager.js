@@ -37,7 +37,7 @@ export class PageAgentManager {
     this.pendingRequests = new Set(); // used to wait for network idle
     this.lastActivity = Date.now();
     this.unsubscribe = undefined;
-    // this.context = context;
+    this.context = context;
     this.requestIds = new Map(); // used to map HTTP req/res at DB level
   }
 
@@ -51,7 +51,6 @@ export class PageAgentManager {
 
     const prompt = await this.getPrompt("premium_feature_discovery.md");
   
-
     // Run page agent
     await this.safePageEvaluate(async ({ prompt, config }) => {
       if (window.__instrumentation__?.pageAgent) {

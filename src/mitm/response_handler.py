@@ -23,7 +23,6 @@ class ResponseHandler:
       # ValueMutationStrategy(),
     ]
     
-
   def analyze(self, flow):
     # Prevent browser from caching data in any case
     flow.response.headers["cache-control"] = "no-store, no-cache, must-revalidate"
@@ -31,12 +30,14 @@ class ResponseHandler:
     flow.response.headers["expires"] = "0"
     flow.response.headers["vary"] = "*"
     
-    if not self.state.enabled and not FORCE_PROXY_ACTIVE:
-      return
-
-    content_type = flow.response.headers.get("content-type", "")
+    content_type = flow.response.headers.get("content-type", "").lower()
     
     if "json" in content_type:
+      print("Intercepted HTTP response of type: JSON")
+      
+      if not self.state.enabled and not FORCE_PROXY_ACTIVE:
+        return
+      
       try:
         data = flow.response.json()
 
@@ -46,11 +47,12 @@ class ResponseHandler:
 
       self.walker.walk(data, self.apply_strategies)
       flow.response.text = json.dumps(data, ensure_ascii=False) # dumps uses escape by default, this prevents char trasformation
-      
-    elif "text/html" in content_type:
-      print("text/html response")
-      return #todo
-
+    
+    elif "html" in content_type:
+      print("Intercepted HTTP response of type: HTML")
+        
+    else:
+      print("Unhandled format", content_type)
 
   def apply_strategies(self, obj, key, context):
     for strategy in self.strategies:

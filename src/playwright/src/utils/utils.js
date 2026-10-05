@@ -5,7 +5,8 @@
 // Import
 // ===========
 import util from "util";
-
+import fs from "node:fs/promises";
+import path from "node:path";
 
 
 // ===========
@@ -55,7 +56,12 @@ export async function screenshot(page, name, destination = "dist/screenshots") {
   const filename = name.endsWith(".png") ? name : `${name}.png`;
   const filepath = path.join(destination, filename);
 
-  await page.screenshot({ path: filepath, fullPage: true });
+  try {
+    await page.screenshot({ path: filepath, fullPage: true });
+  } catch (error) {
+    log('[utils] failed to get page screenshot');
+  }
+
 
   return filepath;
 }

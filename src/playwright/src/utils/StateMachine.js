@@ -51,7 +51,6 @@ export class StateMachine {
     const nextState = this.states.get(name);
 
     try {
-
       // [Exit old state]
       // callback 'onExit' is executed to clean the previous state
       if (previousState?.onExit) {

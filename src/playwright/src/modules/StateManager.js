@@ -68,29 +68,30 @@ export class StateManager {
         await this.pageAgent.start();
       },
       onExit: async () => {
+        log('Exited EXPLORATION state');
         await apiToggleProxyState(true);
         await this.pageAgent.endAnalysis();
       },
     });
 
-    this.stateMachine.addState("replay", {
-      onEnter: async () => {
-        await this.updateBtnLabel(this.getState());
-        await this.explorator.replayExploration();
-      },
-      onExit: async () => {
-        await apiToggleProxyState(false);
-        await this.explorator.endAnalysis({ dispose: true });
-      },
-    });
+    // this.stateMachine.addState("replay", {
+    //   onEnter: async () => {
+    //     await this.updateBtnLabel(this.getState());
+    //     await this.explorator.replayExploration();
+    //   },
+    //   onExit: async () => {
+    //     await apiToggleProxyState(false);
+    //     await this.explorator.endAnalysis({ dispose: true });
+    //   },
+    // });
 
-    this.stateMachine.addState("analysis", {
-      onEnter: async () => {
-        await this.updateBtnLabel(this.getState());
-        await apiStartAnalysis();
-      },
-      onExit: () => { },
-    });
+    // this.stateMachine.addState("analysis", {
+    //   onEnter: async () => {
+    //     await this.updateBtnLabel(this.getState());
+    //     await apiStartAnalysis();
+    //   },
+    //   onExit: () => { },
+    // });
 
     this.stateMachine.setInitialState("idle");
   }
@@ -115,12 +116,10 @@ export class StateManager {
 
   async handleStateChangeRequest() {
     const currState = this.getState();
-    if (currState === "idle" && config.hasPreliminaryAction) {
-      await this.stateMachine.transition("setup", this.context);
-      return currState;
-    }
 
-    await this.launchExploration();
+    if (currState === "idle") {
+      await this.stateMachine.transition("exploration", this.context);
+    }
 
     return currState; 
   }
@@ -128,11 +127,8 @@ export class StateManager {
 
 
   async launchExploration() {
-    if (this.getState() == "idle") {
-      for (const state of ["exploration"]) {
-      // for (const state of ["exploration", "replay", "analysis", "idle"]) {
-        await this.stateMachine.transition(state, this.context);
-      }
+    for (const state of ["exploration", "replay", "analysis", "idle"]) {
+      await this.stateMachine.transition(state, this.context);
     }
   }
 

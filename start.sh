@@ -4,6 +4,7 @@ set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "$DIR/src/logs"
 
+# read from .env
 if [ -f "$DIR/.env" ]; then
   export $(grep -v '^#' "$DIR/.env" | xargs)
 fi
@@ -38,12 +39,25 @@ sleep 2
 google-chrome \
   --remote-debugging-port="$CHROME_DEBUG_PORT" \
   --proxy-server="http://127.0.0.1:$MITM_PORT" \
+  --proxy-bypass-list="<-loopback>" \
   --user-data-dir="$HOME/chrome-mitm-profile" \
   > "$DIR/src/logs/chrome.log" 2>&1 &
 
 CHROME_PID=$!
 
 sleep 3
+
+# Build injectable bundle
+(
+  cd "$DIR/src/playwright"
+  npx esbuild src/injectable/index.js \
+    --bundle \
+    --format=iife \
+    --platform=browser \
+    --minify \
+    --sourcemap \
+    --outfile=dist/injectable.min.js
+) || exit 1
 
 # Start Playwright
 (

@@ -51,9 +51,8 @@ export class PageMonitor {
       log("[PageMonitor] Navigated to initial page:", page.url());
       
       if (config.startImmediately) {
+        log("[PageMonitor] Start immediately");
         await this.stateManager.launchExploration();
-      } else {
-        log("[PageMonitor] Cannot start immediately, invalid configuration");
       }
     }
 
