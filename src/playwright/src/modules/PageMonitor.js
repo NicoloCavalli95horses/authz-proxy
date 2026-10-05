@@ -57,9 +57,36 @@ export class PageMonitor {
       return;
     }
 
+<<<<<<< Updated upstream
     this.attachOnFrameNavigated(page);
     await this.safeEvaluate(page, injectHook);
   }
+=======
+    this.pages.add(page);
+    this.stateManager.setPage(page);
+    log("[PageMonitor] Attaching monitor to:", page.url());
+
+    if (config.initialPage) {
+      await page.goto(config.initialPage);
+      log("[PageMonitor] Navigated to initial page:", page.url());
+
+      if (config.startImmediately) {
+        await this.stateManager.launchExploration();
+      } else {
+        log("[PageMonitor] Cannot start immediately, invalid configuration");
+      }
+    }
+
+    page.on("close", () => {
+      log("[PageMonitor] Page closed");
+      this.pages.delete(page);
+    });
+
+    page.on("crash", () => {
+      log("[PageMonitor] Page crashed");
+      this.pages.delete(page);
+    });
+>>>>>>> Stashed changes
 
   attachOnFrameNavigated(page) {
     page.on("framenavigated", async (frame) => {
@@ -70,7 +97,6 @@ export class PageMonitor {
           log("Navigation:", frame.url());
           await this.safeEvaluate(page, injectHook);
         }
-
       } catch (err) {
         log("Navigation handler failed:", err.message);
       }
