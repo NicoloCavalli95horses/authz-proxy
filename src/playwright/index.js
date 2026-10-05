@@ -1,24 +1,33 @@
+// index.js
+// Entry point of the project. Bootstraps Playwright, initializes the page monitor, injects scripts
 // ===========
 // Import
 // ===========
 import { chromium } from "playwright";
 import { PageMonitor } from "./src/modules/PageMonitor.js";
 import { log } from "./src/utils/utils.js";
-import { injectHook } from "./src/modules/injectHook.js";
+import { StateManager } from "./src/modules/StateManager.js";
+import { config } from "./src/config.js";
 import 'dotenv/config';
+import fs from "fs";
 
+
+// ===========
+// Const
+// ===========
+const injectable = fs.readFileSync("./dist/injectable.min.js", "utf8");
 
 // ===========
 // Main
 // ===========
 async function connect() {
-  log("Try connecting to Chrome...");
+  log("[Index] Try connecting to Chrome...");
   try {
     const browser = await chromium.connectOverCDP(`http://${process.env.API_HOST}:${process.env.CHROME_DEBUG_PORT}`);
-    log("Connected!");
+    log("[Index] Connected to Chrome");
     return browser;
   } catch (error) {
-    log("Connection error: ", error);
+    log("[Index] Connection error: ", error);
   }
 }
 
@@ -26,14 +35,16 @@ async function connect() {
 async function bootstrap() {
   const browser = await connect();
   const context = browser.contexts()[0];
-  const monitor = new PageMonitor();
+  const stateManager = new StateManager();
+  await stateManager.init();
+  const monitor = new PageMonitor(stateManager);
 
   // Hook for all documents
-  await context.addInitScript(injectHook);
+  await context.addInitScript(injectable);
 
   // New tab/popup
   context.on("page", async (page) => {
-    log("Current page:", page.url());
+    log("[Index] Current page:", page.url());
     await configurePage(page);
     await monitor.attach(page);
   });
@@ -47,6 +58,9 @@ async function bootstrap() {
 
 // Disable client cache
 async function configurePage(page) {
+  page.setDefaultTimeout(config.maxPageTimeout);
+  page.setDefaultNavigationTimeout(config.maxPageTimeout);
+
   const client = await page.context().newCDPSession(page);
   await client.send("Network.setCacheDisabled", { cacheDisabled: true });
   await client.send("Network.setBypassServiceWorker", { bypass: true });
@@ -54,4 +68,3 @@ async function configurePage(page) {
 
 
 await bootstrap();
-

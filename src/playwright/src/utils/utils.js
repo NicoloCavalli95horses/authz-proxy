@@ -1,40 +1,29 @@
+// Utils.js
+// This file contains general utility functions and classes to be imported in the Node context
+
 // ===========
 // Import
 // ===========
-<<<<<<< Updated upstream
-import { rm, mkdir } from "node:fs/promises";
-
-=======
 import util from "util";
-import fs from "node:fs/promises";
-import path from "node:path";
->>>>>>> Stashed changes
+
+
 
 // ===========
 // Functions
 // ===========
 export function log(...args) {
   const t = new Date().toISOString();
-  console.log(`\n[${t}][PLAYWRIGHT]`, ...args);
+
+  const formatted = args.map(arg =>
+    typeof arg === "object" ? util.inspect(arg, { depth: null, colors: false, maxArrayLength: null }) : arg
+  );
+
+  console.log(`\n[${t}][PLAYWRIGHT]`, ...formatted);
 }
 
-export async function cleanScreenshots() {
-  try {
-    log("Cleaning screenshots...");
-    for (const dir of ["./screenshots/reference", "./screenshots/target"]) {
-      await rm(dir, { recursive: true, force: true });
-      await mkdir(dir, { recursive: true });
-    }
-  } catch (err) {
-    log(err);
-  }
-}
-
-export async function sleep (time) {
+export async function sleep(time) {
   return new Promise((resolve) => setTimeout(resolve, time));
 }
-<<<<<<< Updated upstream
-=======
 
 export function formatTimeMs(t) {
   // Pad to 2 or 3 digits, default is 2
@@ -70,4 +59,3 @@ export async function screenshot(page, name, destination = "dist/screenshots") {
 
   return filepath;
 }
->>>>>>> Stashed changes

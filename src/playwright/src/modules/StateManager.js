@@ -74,7 +74,7 @@ export class StateManager {
     });
 
     this.stateMachine.addState("replay", {
-      onEnter: async (ctx) => {
+      onEnter: async () => {
         await this.updateBtnLabel(this.getState());
         await this.explorator.replayExploration();
       },
