@@ -10,25 +10,40 @@ export const config = Object.freeze({
 
   // Setup initial page. This may not be exactly the page under test (!)
   // [NOTE] authentication and CAPTCHA solving have to be done manually
-  initialPage: "",
+  initialPage: "http://localhost:3456",
 
   startImmediately: false,
 
   // Increases the number of GUI states to explore exponentially
-  maxExplorationDepth: 1,
+  maxExplorationDepth: 2,
 
   // Ignore certain parts of the DOM (eg. top: 100 = ignore elements within 100px of the top margin) or certain tags
   // [Note] by connecting via CDP, Playwright cannot control the viewport. Force the viewport via Browser DevTools if needed
   ignoreDOMarea: {
     tags: ["nav", "footer", "header", "[role=banner], img, input"],
 
-    // lingualeo:
-    viewport: {
-      top: 200,
-      left: 500,
-      right: 100,
-      bottom: 100
+     viewport: {
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0
     }
+
+    // PetitBambou
+    // viewport: {
+    //   top: 200,
+    //   left: 500,
+    //   right: 100,
+    //   bottom: 100
+    // }
+
+    // lingualeo:
+    // viewport: {
+    //   top: 200,
+    //   left: 500,
+    //   right: 100,
+    //   bottom: 100
+    // }
 
     // Promova
     // viewport: {
@@ -69,5 +84,5 @@ export const config = Object.freeze({
   preventAnimations: false,
 
   // Ignore cross origin HTTP requests and responses
-  ignoreCrossOriginHTTPevents: true,
+  ignoreCrossOriginHTTPevents: false,
 });

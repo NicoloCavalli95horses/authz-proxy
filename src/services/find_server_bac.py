@@ -141,7 +141,6 @@ def map_requests(exploration_http_events, replay_http_events, MIN_SIMILARITY=3):
         best_score = score
         best_match = (exploration_request, exploration_response, similarity)
 
-    
     if best_score is None or best_score < MIN_SIMILARITY:
       matches.append({
         "type": "unmatched",

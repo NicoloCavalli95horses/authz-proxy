@@ -135,7 +135,10 @@ def create_router(state):
     if payload.get("status") != "start":
       raise HTTPException(status_code=400, detail="Invalid analysis status")
     
-    if exploration_run_id is None or replay_run_id is None:
+    expl_id = exploration_run_id or payload.get("exploration_run_id")
+    replay_id = replay_run_id or payload.get("replay_run_id")
+    
+    if expl_id is None or replay_id is None:
       raise HTTPException(status_code=409, detail="Exploration/replay runs are not initialized")
 
     print(f"[API] Starting analysis...")
@@ -143,7 +146,7 @@ def create_router(state):
     prepare_data_count()
     
     # Get BAC-related counters
-    bac = run_analysis(db, exploration_run_id, replay_run_id)
+    bac = run_analysis(db, expl_id, replay_id)
     total["bac"] = dict(bac)
     save_to_json(total, "DATA_COUNT")
     
@@ -172,10 +175,9 @@ def create_router(state):
 
 
 def prepare_data_count():
-  # elapsed time
+  started_at = total["elapsed_time"].get("started_at", time.time())
   total["elapsed_time"]["ended_at"] = time.time()
-  
-  elapsed = int(total["elapsed_time"]["ended_at"] - total["elapsed_time"]["started_at"])
+  elapsed = int(total["elapsed_time"]["ended_at"] - started_at)
   hours, remainder = divmod(elapsed, 3600)
   minutes, seconds = divmod(remainder, 60)
 

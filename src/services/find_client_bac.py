@@ -8,7 +8,7 @@ from difflib import SequenceMatcher
 # ===========
 # Functions
 # ===========
-def compare_dom_pairs(pairs, threshold=0.5):
+def compare_dom_pairs(pairs, threshold=0.35):
   results = []
 
   for pair in pairs:
@@ -35,6 +35,8 @@ def compare_dom_pairs(pairs, threshold=0.5):
         "similarity": similarity,
         "threshold": threshold,
       })
+    else:
+      print(f'[analysis] Similarity: {similarity}. Threshold: {threshold}. Pairs of DOM too similar to flag a client-side BAC.')
 
   return results
   

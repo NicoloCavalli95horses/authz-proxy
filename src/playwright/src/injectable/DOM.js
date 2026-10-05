@@ -163,8 +163,8 @@ function extractClickableElements(ignoreObj) {
       continue;
     }
 
-    // element is too small
-    if (rect.width < 8 || rect.height < 8) {
+    // element is too small or too big
+    if (rect.width < 8 || rect.height < 8 || rect.width >= 600 || rect.height >= 600) {
       continue;
     }
 
@@ -237,7 +237,7 @@ function findElement(fp) {
     return filterMatches(matches, fp);
   }
 
-  if (matches == 1) {
+  if (matches.length == 1) {
     return matches[0];
   }
 
@@ -319,9 +319,7 @@ function fingerprintMatches(candidate, target) {
   }
 
   for (const attr of target.attributes) {
-    const candidateAttr = candidate.attributes.find(
-      a => a.name === attr.name
-    );
+    const candidateAttr = candidate.attributes.find(a => a.name === attr.name);
 
     if (!candidateAttr || candidateAttr.value !== attr.value) {
       return false;
