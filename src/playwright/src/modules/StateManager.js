@@ -25,16 +25,16 @@ export class StateManager {
   constructor() {
     this.stateMachine = new StateMachine();
     this.eventBus = new EventBus();
+
     this.context = {
       page: undefined,
       eventBus: this.eventBus,
       preliminaryActions: [],
       db: { // data used in db
         exploration: {},
-        replay: {}
+        evaluation: {}
       },
     },
-    this.setup = undefined;
     this.explorator = undefined;
   }
 
@@ -56,8 +56,8 @@ export class StateManager {
       onExit: async () => {
         const d1 = await apiInitRun({ type: "exploration", config });
         this.context.db.exploration = d1.data;
-        const d2 = await apiInitRun({ type: "replay", config });
-        this.context.db.replay = d2.data;
+        const d2 = await apiInitRun({ type: "evaluation", config });
+        this.context.db.evaluation = d2.data;
       },
     });
 
@@ -68,30 +68,22 @@ export class StateManager {
         await this.pageAgent.start();
       },
       onExit: async () => {
-        log('Exited EXPLORATION state');
         await apiToggleProxyState(true);
-        await this.pageAgent.endAnalysis();
+        await this.pageAgent.end();
       },
     });
 
-    // this.stateMachine.addState("replay", {
-    //   onEnter: async () => {
-    //     await this.updateBtnLabel(this.getState());
-    //     await this.explorator.replayExploration();
-    //   },
-    //   onExit: async () => {
-    //     await apiToggleProxyState(false);
-    //     await this.explorator.endAnalysis({ dispose: true });
-    //   },
-    // });
-
-    // this.stateMachine.addState("analysis", {
-    //   onEnter: async () => {
-    //     await this.updateBtnLabel(this.getState());
-    //     await apiStartAnalysis();
-    //   },
-    //   onExit: () => { },
-    // });
+    this.stateMachine.addState("evaluation", {
+      onEnter: async () => {
+        await this.updateBtnLabel(this.getState());
+        await this.pageAgent.next();
+      },
+      onExit: async () => {
+        await apiToggleProxyState(false);
+        await this.pageAgent.end();
+        // await apiStartAnalysis();
+      },
+    });
 
     this.stateMachine.setInitialState("idle");
   }
@@ -112,24 +104,18 @@ export class StateManager {
     return await this.eventBus.emit(event);
   }
 
-  
+
 
   async handleStateChangeRequest() {
     const currState = this.getState();
 
     if (currState === "idle") {
-      await this.stateMachine.transition("exploration", this.context);
+      for (const state of ["exploration", "evaluation", "idle"]) {
+        await this.stateMachine.transition(state, this.context);
+      }
     }
 
-    return currState; 
-  }
-
-
-
-  async launchExploration() {
-    for (const state of ["exploration", "replay", "analysis", "idle"]) {
-      await this.stateMachine.transition(state, this.context);
-    }
+    return currState;
   }
 
 

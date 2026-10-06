@@ -89,17 +89,11 @@ function updateBtnLabel(state) {
     case "idle":
       return "Click to start";
 
-    case "setup":
-      return "Click to end setup";
-
     case "exploration":
-      return "Exploring page...";
+      return "Processing page...";
 
-    case "replay":
-      return "Replaying...";
-
-    case "analysis":
-      return "Processing...";
+    case "evaluation":
+      return "Evaluating feature...";
 
     default:
       return "Click to start";

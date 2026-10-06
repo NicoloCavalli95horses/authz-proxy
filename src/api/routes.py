@@ -39,7 +39,7 @@ total = {
 def create_router(state):
   router = APIRouter(prefix="/api")
   exploration_run_id = None
-  replay_run_id = None
+  evaluation_run_id = None
 
   # Update proxy state
   @router.put("/proxy")
@@ -55,18 +55,18 @@ def create_router(state):
     return {"status": "ok", "enabled": state.enabled}
   
   
-  # Init db runs (exploration | replay)
+  # Init db runs
   @router.post("/runs", status_code=201)
   def init_run(payload: dict, db: Session = Depends(Base.get_db)):
-    nonlocal exploration_run_id, replay_run_id
+    nonlocal exploration_run_id, evaluation_run_id
     try:
       run = create_run(db, payload)
       db.commit()
       
       if run.type == "exploration":
         exploration_run_id = run.id
-      elif run.type == "replay":
-        replay_run_id = run.id
+      elif run.type == "evaluation":
+        evaluation_run_id = run.id
       else:
         raise ValueError(f"Unknown run type: {run.type}")
 
@@ -136,7 +136,7 @@ def create_router(state):
       raise HTTPException(status_code=400, detail="Invalid analysis status")
     
     expl_id = exploration_run_id or payload.get("exploration_run_id")
-    replay_id = replay_run_id or payload.get("replay_run_id")
+    replay_id = evaluation_run_id or payload.get("evaluation_run_id")
     
     if expl_id is None or replay_id is None:
       raise HTTPException(status_code=409, detail="Exploration/replay runs are not initialized")
@@ -156,17 +156,17 @@ def create_router(state):
   @router.post("/json-keys", status_code=200)
   def create_json_key(payload: dict, db: Session = Depends(Base.get_db)):
     try:
-      save_json_key(db, replay_run_id, payload)
+      save_json_key(db, evaluation_run_id, payload)
       db.commit()
       print(f'[API] Saved JSON key: {payload}')
-      total["json_keys"][replay_run_id] += 1
+      total["json_keys"][evaluation_run_id] += 1
       return {"status": "ok"}
       
     except Exception as e:
       print("\n========== EXCEPTION ==========")
       print(f"type: {type(e).__name__}")
       print(f"message: {e}")
-      print(f"run_id: {replay_run_id}")
+      print(f"run_id: {evaluation_run_id}")
       traceback.print_exc()
       print("================================\n")
       raise HTTPException(status_code=500, detail="Failed to save JSON key")

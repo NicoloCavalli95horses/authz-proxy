@@ -2,10 +2,11 @@
 // Import
 //===================
 import { apiSaveInteraction, apiSaveState } from "../utils/api.js";
-import { formatTimeMs, log, screenshot } from "../utils/utils.js";
+import { log, screenshot } from "../utils/utils.js";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { config } from "../config.js";
 
 //===================
 // Class
@@ -18,14 +19,6 @@ export class PageAgentManager {
     this.initialURL = undefined;
     this.currentRun = "exploration";
 
-    this.config = {
-      baseURL: process.env.BASE_URL,
-      model: process.env.LLM_MODEL,
-      apiKey: process.env.API_KEY,
-      language: "en-US",
-    }
-
-
     this.currentTransition = {
       network: {
         requests: [],
@@ -36,49 +29,66 @@ export class PageAgentManager {
 
     this.pendingRequests = new Set(); // used to wait for network idle
     this.lastActivity = Date.now();
-    this.unsubscribe = undefined;
-    this.context = context;
+
     this.requestIds = new Map(); // used to map HTTP req/res at DB level
+
+    this.prompts = {
+      exploration: "discovery.md",
+      evaluation: "evaluation.md",
+    }
+
+    this.results = null;
   }
 
-  async start() {
-    const startTime = performance.now();
-    log(`[PageAgentManager][start] Started with the following page agent config:`, this.config);
-    
+  async start(promptReady = undefined) {
+    log(`[PageAgentManager][start] Started with the following page agent config:`, config.pageAgent);
+
     this.initialURL = this.page.url();
+    const prompt = promptReady || await this.getPrompt(this.prompts[this.currentRun]);
 
     await screenshot(this.page);
 
-    const prompt = await this.getPrompt("premium_feature_discovery.md");
-  
-    // Run page agent
-    await this.safePageEvaluate(async ({ prompt, config }) => {
+    // Execute page agent
+    this.results = await this.safePageEvaluate(async ({ prompt, config }) => {
       if (window.__instrumentation__?.pageAgent) {
-        const response = await window.__instrumentation__.pageAgent?.execute(prompt, config);
-        console.log(response)
+        return await window.__instrumentation__.pageAgent?.execute(prompt, config);
       }
-    }, { prompt, config: this.config });
+    }, { prompt, config: config.pageAgent });
 
-    const endTime = performance.now();
-    log(`[ExplorationManager][start] Exploration done in: ${formatTimeMs(endTime - startTime)}`);
+    log(this.results); // to save to db
   }
 
 
 
-
-
-  async replayExploration() {
-    this.currentRun = "replay";
-    log("[ExplorationManager] Replying exploration...");
-    await this.startAnalysis();
-  }
-
-  async endAnalysis({ dispose } = {}) {
-    await this.goToInitialState(this.initialURL);
-
-    if (dispose) {
-      this.dispose();
+  async next() {
+    if (!this.results?.success) {
+      log('[ExplorationManager][next] Preliminar exploration failed, exiting');
+      return;
     }
+    try {
+      const data = JSON.parse(this.results?.data);
+      this.currentRun = "evaluation";
+
+      const basePrompt = await this.getPrompt(this.prompts[this.currentRun]);
+
+      const prompt = `
+        # Previous Exploration Results
+        The following JSON contains the results produced by the previous exploration step. Use these results as input for the current task.
+        \`\`\`json ${JSON.stringify(data, null, 2)} \`\`\`
+        # Current Task ${basePrompt}
+      `;
+
+      log("[ExplorationManager][next] Evaluating previous results...");
+      await this.start(prompt);
+    } catch (error) {
+      log('[ExplorationManager][next] Invalid JSON received:', error.message);
+    }
+  }
+
+
+
+  async end() {
+    await this.goToInitialState(this.initialURL);
   }
 
   // ==============================
