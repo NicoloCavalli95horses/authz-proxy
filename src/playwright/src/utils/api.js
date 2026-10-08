@@ -18,9 +18,9 @@ const BASE_URL = `http://${process.env.API_HOST}:${process.env.API_PORT}/api`;
 // Functions
 //==============================
 
-export async function apiToggleProxyState(enable) {
+export async function apiToggleProxyState(enable, initial_url="") {
   const url = `${BASE_URL}/proxy`;
-  const options = _getApiOptions({ method: "PUT", body: { "enable": enable } });
+  const options = _getApiOptions({ method: "PUT", body: { enable: enable, url: initial_url } });
   log("[API] Requested new proxy state: " + enable)
 
   return await _executeApi({ url, options });

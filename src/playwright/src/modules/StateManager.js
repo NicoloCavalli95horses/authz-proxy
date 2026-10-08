@@ -54,7 +54,8 @@ export class StateManager {
         await this.pageAgent.start();
       },
       onExit: async () => {
-        await apiToggleProxyState(true);
+        const domain = new URL(this.context.page.url()).hostname.replace(/^www\./, "").split(".")[0];
+        await apiToggleProxyState(true, domain);
         await this.pageAgent.end();
       },
     });

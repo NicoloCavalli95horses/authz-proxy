@@ -24,10 +24,12 @@ def create_router(state):
   # Update proxy state
   @router.put("/proxy")
   def update_proxy_state(payload: dict):
-    enabled = payload.get("enable", False)
-    state.enabled = enabled
+    state.enabled = payload.get("enable", False)
     
-    if enabled:
+    if not state.target_url:
+      state.target_url = payload.get("url", "")
+    
+    if state.enabled:
       data["elapsed_time"]["started_at"] = time.time()
       data["elapsed_time"]["ended_at"] = None
     
@@ -39,7 +41,7 @@ def create_router(state):
   @router.get("/results", status_code=200)
   def start_analysis():    
     prepare_data_count()
-    save_to_json(data, "DATA_COUNT")
+    save_to_json(data, state.target_url)
     return {"status": "ok"}
 
 

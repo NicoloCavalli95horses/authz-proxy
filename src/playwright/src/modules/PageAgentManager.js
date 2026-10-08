@@ -24,7 +24,7 @@ export class PageAgentManager {
   }
 
   async start(promptReady = undefined) {
-    log("`[PageAgentManager] Started");
+    log("[PageAgentManager] Started");
     await this.waitForDOMStable();
 
     this.initialURL = this.page.url();
