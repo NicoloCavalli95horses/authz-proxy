@@ -41,7 +41,8 @@ export class PageAgentManager {
   }
 
   async start(promptReady = undefined) {
-    log(`[PageAgentManager][start] Started with the following page agent config:`, config.pageAgent);
+    log(`[PageAgentManager][start] Started with the following config:`, config);
+    await this.waitForDOMStable();
 
     this.initialURL = this.page.url();
     const prompt = promptReady || await this.getPrompt(this.prompts[this.currentRun]);
@@ -61,28 +62,22 @@ export class PageAgentManager {
 
 
   async next() {
-    if (!this.results?.success) {
+    if (!this.results?.success && !this.results?.data) {
       log('[ExplorationManager][next] Preliminar exploration failed, exiting');
       return;
     }
-    try {
-      const data = JSON.parse(this.results?.data);
-      this.currentRun = "evaluation";
+    
+    this.currentRun = "evaluation";
+    const basePrompt = await this.getPrompt(this.prompts[this.currentRun]);
+    const prompt = `
+      # Previous Exploration Results
+      The following data contains the results produced by the previous exploration step. Use these results as input for the current task.
+      ${this.results.data}
+      # Current Task ${basePrompt}
+    `;
 
-      const basePrompt = await this.getPrompt(this.prompts[this.currentRun]);
-
-      const prompt = `
-        # Previous Exploration Results
-        The following JSON contains the results produced by the previous exploration step. Use these results as input for the current task.
-        \`\`\`json ${JSON.stringify(data, null, 2)} \`\`\`
-        # Current Task ${basePrompt}
-      `;
-
-      log("[ExplorationManager][next] Evaluating previous results...");
-      await this.start(prompt);
-    } catch (error) {
-      log('[ExplorationManager][next] Invalid JSON received:', error.message);
-    }
+    log("[ExplorationManager][next] Evaluating previous results...");
+    await this.start(prompt);
   }
 
 
