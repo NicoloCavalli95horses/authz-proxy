@@ -9,9 +9,10 @@ from ..services.save_to_json import save_to_json
 # ===========
 # Vars
 # ===========
-total = {
+data = {
   "elapsed_time": {},
   "mutated_keys": [],
+  "agent_history": []
 }
 
 # ===========
@@ -27,8 +28,8 @@ def create_router(state):
     state.enabled = enabled
     
     if enabled:
-      total["elapsed_time"]["started_at"] = time.time()
-      total["elapsed_time"]["ended_at"] = None
+      data["elapsed_time"]["started_at"] = time.time()
+      data["elapsed_time"]["ended_at"] = None
     
     print(f"[API] Proxy state update: {state.enabled}")
     return {"status": "ok", "enabled": state.enabled}
@@ -38,7 +39,15 @@ def create_router(state):
   @router.get("/results", status_code=200)
   def start_analysis():    
     prepare_data_count()
-    save_to_json(total, "DATA_COUNT")
+    save_to_json(data, "DATA_COUNT")
+    return {"status": "ok"}
+
+
+  # Save history of agent actions
+  @router.post("/agent-output", status_code=200)
+  def save_agent_output(payload: dict):
+    print(f"[API] Received agent output: {payload}")
+    data["agent_history"].append(payload)
     return {"status": "ok"}
 
 
@@ -46,20 +55,20 @@ def create_router(state):
   @router.post("/json-keys", status_code=200)
   def create_json_key(payload: dict):
     print(f"[API] Saved JSON key: {payload}")
-    total["mutated_keys"].append(payload)
+    data["mutated_keys"].append(payload)
     return {"status": "ok"}
       
   return router
 
 
 def prepare_data_count():
-  started_at = total["elapsed_time"].get("started_at", time.time())
-  total["elapsed_time"]["ended_at"] = time.time()
-  elapsed = int(total["elapsed_time"]["ended_at"] - started_at)
+  started_at = data["elapsed_time"].get("started_at", time.time())
+  data["elapsed_time"]["ended_at"] = time.time()
+  elapsed = int(data["elapsed_time"]["ended_at"] - started_at)
   hours, remainder = divmod(elapsed, 3600)
   minutes, seconds = divmod(remainder, 60)
 
-  total["elapsed_time"]["elapsed"] = (f"{hours:02d}:{minutes:02d}:{seconds:02d}")
-  total["json_keys"] = len(total["mutated_keys"])
+  data["elapsed_time"]["elapsed"] = (f"{hours:02d}:{minutes:02d}:{seconds:02d}")
+  data["json_keys"] = len(data["mutated_keys"])
 
-  return total
+  return data

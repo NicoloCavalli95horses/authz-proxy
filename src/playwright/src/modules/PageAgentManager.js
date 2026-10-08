@@ -6,6 +6,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { config } from "../config.js";
+import { apiSaveAgentOutput } from "../utils/api.js";
 
 //===================
 // Class
@@ -20,8 +21,6 @@ export class PageAgentManager {
       exploration: "discovery.md",
       evaluation: "evaluation.md",
     }
-
-    this.resultsHistory = [];
   }
 
   async start(promptReady = undefined) {
@@ -39,7 +38,7 @@ export class PageAgentManager {
     }, { prompt, config: config.pageAgent });
 
     log(result);
-    this.resultsHistory.push(result);
+    await apiSaveAgentOutput(result);
   }
 
 

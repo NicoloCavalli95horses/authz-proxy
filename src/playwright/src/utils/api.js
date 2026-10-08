@@ -37,6 +37,15 @@ export async function apiGetResults() {
 }
 
 
+export async function apiSaveAgentOutput(body) {
+  const url = `${BASE_URL}/agent-output`;
+  const options = _getApiOptions({ method: "POST", body});
+  log("[API] Requested new analysis")
+
+  return await _executeApi({ url, options });
+}
+
+
 
 async function _executeApi({ url, options }) {
   try {
