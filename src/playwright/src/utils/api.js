@@ -5,7 +5,6 @@
 //==============================
 // Import
 //==============================
-import { config } from '../config.js';
 import { log } from './utils.js';
 
 
@@ -29,48 +28,9 @@ export async function apiToggleProxyState(enable) {
 
 
 
-// Create the main DB record
-export async function apiInitRun(data) {
-  if (!data) { throw new Error("Missing data"); }
-
-  const url = `${BASE_URL}/runs`;
-  const options = _getApiOptions({ method: "POST", body: data });
-  log("[API] Requested new run");
-
-  return await _executeApi({ url, options });
-}
-
-
-
-// Save new node (GUI state)
-export async function apiSaveState(runId, node) {
-  if (!runId || !node) { throw new Error("Missing runId or state data"); }
-
-  log("[API] Saving GUI state (graph node)...");
-  const url = `${BASE_URL}/runs/${runId}/states`;
-  const options = _getApiOptions({ method: "POST", body: node });
-
-  return await _executeApi({ url, options });
-}
-
-
-
-// Save an interaction execution and its effects
-export async function apiSaveInteraction(runId, data) {
-  if (!runId || !data) { throw new Error("Missing runId or interaction data"); }
-
-  log("[API] Saving GUI interaction (graph edge)...");
-  const url = `${BASE_URL}/runs/${runId}/interactions`;
-  const options = _getApiOptions({ method: "POST", body: data });
-
-  return await _executeApi({ url, options });
-}
-
-
-
-export async function apiStartAnalysis() {
-  const url = `${BASE_URL}/analysis`;
-  const options = _getApiOptions({ method: "POST", body: { "status": "start" } });
+export async function apiGetResults() {
+  const url = `${BASE_URL}/results`;
+  const options = _getApiOptions();
   log("[API] Requested new analysis")
 
   return await _executeApi({ url, options });

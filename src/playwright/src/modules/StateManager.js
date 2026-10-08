@@ -5,15 +5,13 @@
 //===================
 // Import
 //===================
-import { log } from "../utils/utils.js";
 import { EventBus } from "../utils/eventBus.js";
 import { StateMachine } from "../utils/StateMachine.js";
 import { PageAgentManager } from "./PageAgentManager.js";
 import { config } from "../config.js";
 
 import {
-  apiInitRun,
-  apiStartAnalysis,
+  apiGetResults,
   apiToggleProxyState,
 } from "../utils/api.js";
 
@@ -25,17 +23,10 @@ export class StateManager {
   constructor() {
     this.stateMachine = new StateMachine();
     this.eventBus = new EventBus();
-
     this.context = {
       page: undefined,
       eventBus: this.eventBus,
-      preliminaryActions: [],
-      db: { // data used in db
-        exploration: {},
-        evaluation: {}
-      },
-    },
-    this.explorator = undefined;
+    };
   }
 
 
@@ -53,12 +44,7 @@ export class StateManager {
       onEnter: async () => {
         await this.updateBtnLabel(this.getState());
       },
-      onExit: async () => {
-        const d1 = await apiInitRun({ type: "exploration", config });
-        this.context.db.exploration = d1.data;
-        const d2 = await apiInitRun({ type: "evaluation", config });
-        this.context.db.evaluation = d2.data;
-      },
+      onExit: () => {},
     });
 
     this.stateMachine.addState("exploration", {
@@ -81,7 +67,7 @@ export class StateManager {
       onExit: async () => {
         await apiToggleProxyState(false);
         await this.pageAgent.end();
-        // await apiStartAnalysis();
+        await apiGetResults();
       },
     });
 

@@ -10,7 +10,6 @@ export const config = Object.freeze({
   // Ignore cross origin HTTP requests and responses
   ignoreCrossOriginHTTPevents: false,
 
-
   pageAgent: {
     baseURL: process.env.BASE_URL,
     model: process.env.LLM_MODEL,

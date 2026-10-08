@@ -6,8 +6,6 @@ from src.mitm.request_handler import RequestHandler
 from src.mitm.response_handler import ResponseHandler
 from src.mitm.state import ProxyState
 from src.api.server import Server
-from src.db.database import engine, Base
-from src.db import models
 import threading
 
 
@@ -18,8 +16,7 @@ state = ProxyState()
 server = Server(state)
 
 threading.Thread(target=server.run, daemon=True).start()
-Base.test_connection()
-Base.metadata.create_all(bind=engine)
+
 
 
 # ===========

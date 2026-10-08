@@ -1,8 +1,7 @@
 //===================
 // Import
 //===================
-import { apiSaveInteraction, apiSaveState } from "../utils/api.js";
-import { log, screenshot } from "../utils/utils.js";
+import { log } from "../utils/utils.js";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,49 +13,33 @@ import { config } from "../config.js";
 export class PageAgentManager {
   constructor(context) {
     this.page = context.page;
-    this.eventBus = context.eventBus;
-    this.db = context.db;
     this.initialURL = undefined;
     this.currentRun = "exploration";
-
-    this.currentTransition = {
-      network: {
-        requests: [],
-        responses: [],
-        navigations: [] // routes or path modifications (e.g., history.pushState), often handled client-side in SPAs
-      }
-    };
-
-    this.pendingRequests = new Set(); // used to wait for network idle
-    this.lastActivity = Date.now();
-
-    this.requestIds = new Map(); // used to map HTTP req/res at DB level
 
     this.prompts = {
       exploration: "discovery.md",
       evaluation: "evaluation.md",
     }
 
-    this.results = null;
+    this.resultsHistory = [];
   }
 
   async start(promptReady = undefined) {
-    log(`[PageAgentManager][start] Started with the following config:`, config);
+    log("`[PageAgentManager] Started");
     await this.waitForDOMStable();
 
     this.initialURL = this.page.url();
     const prompt = promptReady || await this.getPrompt(this.prompts[this.currentRun]);
 
-    await screenshot(this.page);
-
     // Execute page agent
-    this.results = await this.safePageEvaluate(async ({ prompt, config }) => {
+    const result = await this.safePageEvaluate(async ({ prompt, config }) => {
       if (window.__instrumentation__?.pageAgent) {
         return await window.__instrumentation__.pageAgent?.execute(prompt, config);
       }
     }, { prompt, config: config.pageAgent });
 
-    log(this.results); // to save to db
+    log(result);
+    this.resultsHistory.push(result);
   }
 
 

@@ -16,3 +16,4 @@ playwright/screenshots/reference/*
 playwright/screenshots/target/*
 output/*
 dist/*
+*.json

@@ -13,6 +13,7 @@ FORCE_PROXY_ACTIVE = os.getenv("FORCE_PROXY_ACTIVE", "false").lower() == "true"
 class KeyMutationStrategy(BaseMutationStrategy):
   seen_json_keys = set()
   POST_URL = f"http://{os.getenv("API_HOST")}:{os.getenv("API_PORT")}/api/json-keys"
+  
   RULES = {
     "access": (False, True),
     "accessible": (False, True),
@@ -32,7 +33,6 @@ class KeyMutationStrategy(BaseMutationStrategy):
     "full": (False, True),
     "has": (False, True),
     "is_subscriber": (False, True),
-    # "level": (False, True), # this breaks Lingualeo
     "locked": (True, False),
     "otp": (True, False),
     "paid": (True, False),
