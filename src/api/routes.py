@@ -12,7 +12,8 @@ from ..services.save_to_json import save_to_json
 data = {
   "elapsed_time": {},
   "mutated_keys": [],
-  "agent_history": []
+  "web_agent": [],
+  "tokens": 0,
 }
 
 # ===========
@@ -49,7 +50,8 @@ def create_router(state):
   @router.post("/agent-output", status_code=200)
   def save_agent_output(payload: dict):
     print(f"[API] Received agent output: {payload}")
-    data["agent_history"].append(payload)
+    data["web_agent"].append(payload)
+    data["tokens"] =+ count_tokens(payload)
     return {"status": "ok"}
 
 
@@ -61,6 +63,18 @@ def create_router(state):
     return {"status": "ok"}
       
   return router
+
+
+
+def count_tokens(data):
+  total = 0
+
+  for item in data.get("history", []):
+    usage = item.get("usage", {})
+    total += usage.get("totalTokens", 0)
+
+  return total
+
 
 
 def prepare_data_count():

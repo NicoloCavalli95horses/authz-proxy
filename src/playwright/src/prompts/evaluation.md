@@ -20,7 +20,7 @@ The JSON file MUST contain valid JSON with exactly the following top-level struc
 ```json
 {
   "url": "<current page URL>",
-  "BAC": [
+  "bac_vulnerabilities": [
     {
       "title": "a general **title** describing the issue found",
       "reason": "the **reason** why you believe you found a BAC",
@@ -34,7 +34,7 @@ If you did not find a BAC,  you must report an empty array:
 ```json
 {
   "url": "<current page URL>",
-  "BAC": []
+  "bac_vulnerabilities": []
 }
 
 

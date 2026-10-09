@@ -15,5 +15,7 @@ export const config = Object.freeze({
     model: process.env.LLM_MODEL,
     apiKey: process.env.API_KEY,
     language: "en-US",
-  }
+  },
+
+  retryAttempts: 3,
 });

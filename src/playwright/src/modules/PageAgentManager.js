@@ -21,6 +21,12 @@ export class PageAgentManager {
       exploration: "discovery.md",
       evaluation: "evaluation.md",
     }
+    this.results = {
+      exploration: undefined,
+      evaluation: undefined,
+    };
+
+    this.retryAttempts = config.retryAttempts;
   }
 
   async start(promptReady = undefined) {
@@ -28,32 +34,36 @@ export class PageAgentManager {
     await this.waitForDOMStable();
 
     this.initialURL = this.page.url();
-    const prompt = promptReady || await this.getPrompt(this.prompts[this.currentRun]);
 
-    // Execute page agent
-    const result = await this.safePageEvaluate(async ({ prompt, config }) => {
-      if (window.__instrumentation__?.pageAgent) {
-        return await window.__instrumentation__.pageAgent?.execute(prompt, config);
-      }
-    }, { prompt, config: config.pageAgent });
+    const prompt = promptReady ?? await this.getPrompt(this.prompts[this.currentRun]);
 
-    log(result);
+    const result = await this.executeWithRetry(prompt);
+
+    if (!result?.success) {
+      throw new Error(`Page agent failed during ${this.currentRun}`);
+    }
+
     await apiSaveAgentOutput(result);
+    this.results[this.currentRun] = result;
+
+    return result;
   }
 
 
 
   async next() {
-    if (!this.results?.success && !this.results?.data) {
-      log('[ExplorationManager][next] Preliminar exploration failed, exiting');
-      return;
+    const exploration = this.results.exploration;
+
+    if (!exploration?.success || exploration.data == null) {
+      throw new Error("Cannot evaluate: exploration results are missing or invalid");
     }
-    
+
     this.currentRun = "evaluation";
+
     const basePrompt = await this.getPrompt(this.prompts[this.currentRun]);
     const prompt = `
-      # Previous Exploration Results
-      The following data contains the results produced by the previous exploration step. Use these results as input for the current task.
+      The following data contains the results produced by the previous exploration step.
+      You must use these results as input for the current task.
       ${this.results.data}
       # Current Task ${basePrompt}
     `;
@@ -65,12 +75,39 @@ export class PageAgentManager {
 
 
   async end() {
-    await this.goToInitialState(this.initialURL);
+    if (this.initialURL) {
+      await this.goToInitialState(this.initialURL);
+    }
   }
+
 
   // ==============================
   // Utils
   // ==============================
+
+  async executeWithRetry(prompt) {
+    for (let attempt = 0; attempt <= this.retryAttempts; attempt++) {
+      const result = await this.safePageEvaluate(async ({ prompt, config }) => {
+        const agent = window.__instrumentation__?.pageAgent;
+
+        if (!agent) { return { success: false, error: "Page agent not initialized" }; }
+
+        try {
+          return await agent.execute(prompt, config);
+        } catch (error) {
+          return { success: false, error: error.message, };
+        }
+
+      }, { prompt, config: config.pageAgent });
+
+      if (result?.success) { return result; }
+      log(`[PageAgentManager] Attempt ${attempt + 1}/` + `${this.retryAttempts + 1} failed: ` + `${result?.error ?? "Unknown error"}`);
+    }
+
+    return { success: false, error: "Maximum retry attempts exceeded" };
+  }
+
+
 
   async safePageEvaluate(fn, args, retries = 3, delay = 300) {
     for (let i = 0; i < retries; i++) {
