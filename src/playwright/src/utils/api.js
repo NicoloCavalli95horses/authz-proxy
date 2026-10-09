@@ -18,20 +18,28 @@ const BASE_URL = `http://${process.env.API_HOST}:${process.env.API_PORT}/api`;
 // Functions
 //==============================
 
-export async function apiToggleProxyState(enable, initial_url="") {
+export async function apiToggleProxyState(enable) {
   const url = `${BASE_URL}/proxy`;
-  const options = _getApiOptions({ method: "PUT", body: { enable: enable, url: initial_url } });
+  const options = _getApiOptions({ method: "PUT", body: { enable: enable } });
   log("[API] Requested new proxy state: " + enable)
 
   return await _executeApi({ url, options });
 }
 
 
+export async function apiInitRun(initial_url="") {
+  const url = `${BASE_URL}/init`;
+  const options = _getApiOptions({ method: "POST", body: { url: initial_url } });
+  log("[API] Requested new run init")
+
+  return await _executeApi({ url, options });
+}
+
 
 export async function apiGetResults() {
   const url = `${BASE_URL}/results`;
   const options = _getApiOptions();
-  log("[API] Requested new analysis")
+  log("[API] Requested new results")
 
   return await _executeApi({ url, options });
 }
@@ -40,7 +48,7 @@ export async function apiGetResults() {
 export async function apiSaveAgentOutput(body) {
   const url = `${BASE_URL}/agent-output`;
   const options = _getApiOptions({ method: "POST", body});
-  log("[API] Requested new analysis")
+  log("[API] Saved agent output")
 
   return await _executeApi({ url, options });
 }

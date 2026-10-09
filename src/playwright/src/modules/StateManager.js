@@ -10,6 +10,7 @@ import { StateMachine } from "../utils/StateMachine.js";
 import { PageAgentManager } from "./PageAgentManager.js";
 
 import {
+  apiInitRun,
   apiGetResults,
   apiToggleProxyState,
 } from "../utils/api.js";
@@ -43,7 +44,10 @@ export class StateManager {
       onEnter: async () => {
         await this.updateBtnLabel(this.getState());
       },
-      onExit: () => {},
+      onExit: async () => {
+        const domain = new URL(this.context.page.url()).hostname.replace(/^www\./, "");
+        await apiInitRun(domain);
+      },
     });
 
     this.stateMachine.addState("exploration", {
@@ -53,8 +57,7 @@ export class StateManager {
         await this.agentHandler.start();
       },
       onExit: async () => {
-        const domain = new URL(this.context.page.url()).hostname.replace(/^www\./, "");
-        await apiToggleProxyState(true, domain);
+        await apiToggleProxyState(true);
         await this.agentHandler.end();
       },
     });

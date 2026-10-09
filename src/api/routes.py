@@ -22,18 +22,23 @@ data = {
 def create_router(state):
   router = APIRouter(prefix="/api")
 
+
+  # Init run
+  @router.post("/init", status_code=200)
+  def init_analysis(payload: dict):    
+    if data["elapsed_time"]["started_at"] is None:
+      data["elapsed_time"]["started_at"] = time.time()
+      
+    if not state.target_url:
+      state.target_url = payload.get("url", "") 
+    
+    return {"status": "ok"}
+  
+  
   # Update proxy state
   @router.put("/proxy")
   def update_proxy_state(payload: dict):
-    state.enabled = payload.get("enable", False)
-    
-    if not state.target_url:
-      state.target_url = payload.get("url", "")
-    
-    # Update beginning time only once
-    if state.enabled and data["elapsed_time"]["started_at"] is None:
-      data["elapsed_time"]["started_at"] = time.time()
-    
+    state.enabled = payload.get("enable", False)    
     print(f"[API] Proxy state update: {state.enabled}")
     return {"status": "ok", "enabled": state.enabled}
 
@@ -80,11 +85,6 @@ def count_tokens(data):
 def prepare_data_count():
   now = time.time()
   started_at = data["elapsed_time"]["started_at"]
-
-  if started_at is None:
-    started_at = now
-    data["elapsed_time"]["started_at"] = started_at
-
   data["elapsed_time"]["ended_at"] = now
   elapsed = int(now - started_at)
   hours, remainder = divmod(elapsed, 3600)
