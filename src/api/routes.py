@@ -10,7 +10,7 @@ from ..services.save_to_json import save_to_json
 # Vars
 # ===========
 data = {
-  "elapsed_time": {},
+  "elapsed_time": {"started_at": None, "ended_at": None},
   "mutated_keys": [],
   "web_agent": [],
   "tokens": 0,
@@ -30,9 +30,9 @@ def create_router(state):
     if not state.target_url:
       state.target_url = payload.get("url", "")
     
-    if state.enabled:
+    # Update beginning time only once
+    if state.enabled and data["elapsed_time"]["started_at"] is None:
       data["elapsed_time"]["started_at"] = time.time()
-      data["elapsed_time"]["ended_at"] = None
     
     print(f"[API] Proxy state update: {state.enabled}")
     return {"status": "ok", "enabled": state.enabled}
@@ -51,7 +51,7 @@ def create_router(state):
   def save_agent_output(payload: dict):
     print(f"[API] Received agent output: {payload}")
     data["web_agent"].append(payload)
-    data["tokens"] =+ count_tokens(payload)
+    data["tokens"] += count_tokens(payload)
     return {"status": "ok"}
 
 
@@ -78,9 +78,15 @@ def count_tokens(data):
 
 
 def prepare_data_count():
-  started_at = data["elapsed_time"].get("started_at", time.time())
-  data["elapsed_time"]["ended_at"] = time.time()
-  elapsed = int(data["elapsed_time"]["ended_at"] - started_at)
+  now = time.time()
+  started_at = data["elapsed_time"]["started_at"]
+
+  if started_at is None:
+    started_at = now
+    data["elapsed_time"]["started_at"] = started_at
+
+  data["elapsed_time"]["ended_at"] = now
+  elapsed = int(now - started_at)
   hours, remainder = divmod(elapsed, 3600)
   minutes, seconds = divmod(remainder, 60)
 

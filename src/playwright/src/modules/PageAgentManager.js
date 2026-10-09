@@ -25,18 +25,17 @@ export class PageAgentManager {
       exploration: undefined,
       evaluation: undefined,
     };
-
-    this.retryAttempts = config.retryAttempts;
   }
 
   async start(promptReady = undefined) {
     log("[PageAgentManager] Started");
     await this.waitForDOMStable();
 
-    this.initialURL = this.page.url();
+    if (!this.initialURL) {
+      this.initialURL = this.page.url();
+    }
 
     const prompt = promptReady ?? await this.getPrompt(this.prompts[this.currentRun]);
-
     const result = await this.executeWithRetry(prompt);
 
     if (!result?.success) {
@@ -64,7 +63,7 @@ export class PageAgentManager {
     const prompt = `
       The following data contains the results produced by the previous exploration step.
       You must use these results as input for the current task.
-      ${this.results.data}
+      ${exploration.data}
       # Current Task ${basePrompt}
     `;
 
@@ -81,16 +80,29 @@ export class PageAgentManager {
   }
 
 
+  // Returns true if the agent returned "found":true
+  hasSucceded(data) {
+    const res = this.results.evaluation || data;
+    if (!res?.success || typeof res.data !== "string") {
+      return null;
+    }
+
+    return /"found"\s*:\s*true\b/.test(res.data);
+  }
+
+
   // ==============================
   // Utils
   // ==============================
 
   async executeWithRetry(prompt) {
-    for (let attempt = 0; attempt <= this.retryAttempts; attempt++) {
+    for (let attempt = 1; attempt <= config.LLMfailureRetries; attempt++) {
       const result = await this.safePageEvaluate(async ({ prompt, config }) => {
         const agent = window.__instrumentation__?.pageAgent;
 
-        if (!agent) { return { success: false, error: "Page agent not initialized" }; }
+        if (!agent) {
+          return { success: false, error: "Page agent not initialized" };
+        }
 
         try {
           return await agent.execute(prompt, config);
@@ -100,8 +112,17 @@ export class PageAgentManager {
 
       }, { prompt, config: config.pageAgent });
 
-      if (result?.success) { return result; }
-      log(`[PageAgentManager] Attempt ${attempt + 1}/` + `${this.retryAttempts + 1} failed: ` + `${result?.error ?? "Unknown error"}`);
+      // Task completed with found:true
+      if (result?.success && this.hasSucceded(result)) {
+        return result;
+      } 
+
+      log(`[PageAgentManager] Attempt ${attempt}/${config.LLMfailureRetries} failed: ${result?.error ?? "Unknown error"}`);
+      
+      // Restore page
+      if (attempt < config.LLMfailureRetries) {
+        await this.goToInitialState(this.initialURL);
+      }
     }
 
     return { success: false, error: "Maximum retry attempts exceeded" };

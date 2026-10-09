@@ -8,7 +8,6 @@
 import { EventBus } from "../utils/eventBus.js";
 import { StateMachine } from "../utils/StateMachine.js";
 import { PageAgentManager } from "./PageAgentManager.js";
-import { config } from "../config.js";
 
 import {
   apiGetResults,
@@ -50,24 +49,24 @@ export class StateManager {
     this.stateMachine.addState("exploration", {
       onEnter: async (ctx) => {
         await this.updateBtnLabel(this.getState());
-        this.pageAgent = new PageAgentManager(ctx);
-        await this.pageAgent.start();
+        this.agentHandler = new PageAgentManager(ctx);
+        await this.agentHandler.start();
       },
       onExit: async () => {
-        const domain = new URL(this.context.page.url()).hostname.replace(/^www\./, "").split(".")[0];
+        const domain = new URL(this.context.page.url()).hostname.replace(/^www\./, "");
         await apiToggleProxyState(true, domain);
-        await this.pageAgent.end();
+        await this.agentHandler.end();
       },
     });
 
     this.stateMachine.addState("evaluation", {
       onEnter: async () => {
         await this.updateBtnLabel(this.getState());
-        await this.pageAgent.next();
+        await this.agentHandler.next();
       },
       onExit: async () => {
         await apiToggleProxyState(false);
-        await this.pageAgent.end();
+        await this.agentHandler.end();
         await apiGetResults();
       },
     });
